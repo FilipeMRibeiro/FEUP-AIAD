@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="libs/jade/lib/jade.jar"/>
 	<classpathentry kind="lib" path="libs/repastj/lib/asm.jar"/>
 	<classpathentry kind="lib" path="libs/repastj/lib/beanbowl.jar"/>
@@ -28,5 +27,6 @@
 	<classpathentry kind="lib" path="libs/repastj/repast.jar"/>
 	<classpathentry kind="lib" path="libs/sajas/lib/SAJaS.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
