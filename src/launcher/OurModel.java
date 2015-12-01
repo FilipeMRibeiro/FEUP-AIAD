@@ -6,12 +6,12 @@ import java.util.ArrayList;
 import agents.SensingAgent;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
+import jade.wrapper.StaleProxyException;
 import sajas.core.Runtime;
 import sajas.sim.repast3.Repast3Launcher;
 import sajas.wrapper.ContainerController;
 import uchicago.src.sim.analysis.OpenSequenceGraph;
 import uchicago.src.sim.analysis.Sequence;
-import uchicago.src.sim.engine.BasicAction;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimInit;
 import uchicago.src.sim.gui.DisplaySurface;
@@ -24,7 +24,6 @@ public class OurModel extends Repast3Launcher {
 	private ContainerController mainContainer;
 
 	private ArrayList<SensingAgent> agentList;
-	private Schedule schedule;
 	private DisplaySurface displaySurface;
 	private Object2DGrid space;
 	private OpenSequenceGraph plot;
@@ -32,7 +31,7 @@ public class OurModel extends Repast3Launcher {
 	private int numberOfAgents, spaceSize;
 
 	public OurModel() {
-		this.numberOfAgents = 100;
+		this.numberOfAgents = 10;
 		this.spaceSize = 100;
 	}
 
@@ -63,7 +62,7 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	public void setup() {
-		schedule = new Schedule();
+		super.setup();
 
 		if (displaySurface != null)
 			displaySurface.dispose();
@@ -78,43 +77,49 @@ public class OurModel extends Repast3Launcher {
 		Profile p1 = new ProfileImpl();
 		mainContainer = rt.createMainContainer(p1);
 
-		// launchAgents();
+		launchAgents();
 	}
 
-	// public void launchAgents() {
-	// try {
-	// mainContainer.acceptNewAgent("Bot1", new SimpleAgent()).start();
-	// } catch (StaleProxyException e) {
-	// e.printStackTrace();
-	// }
-	// }
+	public void launchAgents() {
+		try {
+			for (int i = 1; i <= numberOfAgents; i++)
+				mainContainer.acceptNewAgent("Bot" + i, spawnAgent()).start();
+		} catch (StaleProxyException e) {
+			e.printStackTrace();
+		}
+	}
 
 	public void begin() {
 		buildModel();
 		buildDisplay();
+
+		super.begin();
+
 		buildSchedule();
 	}
 
 	private void buildModel() {
 		agentList = new ArrayList<SensingAgent>();
 		space = new Object2DGrid(spaceSize, spaceSize);
+	}
 
-		for (int i = 0; i < numberOfAgents; i++) {
-			int x, y;
+	SensingAgent spawnAgent() {
+		int x, y;
 
-			do {
-				x = Random.uniform.nextIntFromTo(0, space.getSizeX() - 1);
-				y = Random.uniform.nextIntFromTo(0, space.getSizeY() - 1);
-			} while (space.getObjectAt(x, y) != null);
+		do {
+			x = Random.uniform.nextIntFromTo(0, space.getSizeX() - 1);
+			y = Random.uniform.nextIntFromTo(0, space.getSizeY() - 1);
+		} while (space.getObjectAt(x, y) != null);
 
-			Color color = new Color(Random.uniform.nextIntFromTo(0, 255), Random.uniform.nextIntFromTo(0, 255),
-					Random.uniform.nextIntFromTo(0, 255));
+		Color color = new Color(Random.uniform.nextIntFromTo(0, 255), Random.uniform.nextIntFromTo(0, 255),
+				Random.uniform.nextIntFromTo(0, 255));
 
-			SensingAgent agent = new SensingAgent(x, y, color, space);
+		SensingAgent agent = new SensingAgent(x, y, color, space);
 
-			space.putObjectAt(x, y, agent);
-			agentList.add(agent);
-		}
+		space.putObjectAt(x, y, agent);
+		agentList.add(agent);
+
+		return agent;
 	}
 
 	private void buildDisplay() {
@@ -142,18 +147,8 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	private void buildSchedule() {
-		schedule.scheduleActionBeginning(0, new MainAction());
-		schedule.scheduleActionAtInterval(1, displaySurface, "updateDisplay", Schedule.LAST);
-		schedule.scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
-	}
-
-	class MainAction extends BasicAction {
-
-		public void execute() {
-			for (SensingAgent agent : agentList)
-				agent.walk();
-		}
-
+		getSchedule().scheduleActionAtInterval(1, displaySurface, "updateDisplay", Schedule.LAST);
+		getSchedule().scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
 	}
 
 	/**
