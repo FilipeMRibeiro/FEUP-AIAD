@@ -4,15 +4,6 @@ import sajas.core.Agent;
 import sajas.core.behaviours.TickerBehaviour;
 import sajas.core.behaviours.WakerBehaviour;
 
-/**
- * This example shows the usage of the behaviours that allow scheduling actions
- * at a given point in time: <code>WakerBehaviour</code> and
- * <code>TickerBehaviour</code>. More in details this agent executes a
- * <code>TickerBehaviour</code> that prints the agent name every second and a
- * <code>WakerBehaviour</code> ] that kill the agent after 10 seconds.
- * 
- * @author Giovanni Caire - TILAB
- */
 public class TimeAgent extends Agent {
 
 	protected void setup() {

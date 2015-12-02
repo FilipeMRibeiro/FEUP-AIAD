@@ -114,7 +114,7 @@ public class OurModel extends Repast3Launcher {
 		Color color = new Color(Random.uniform.nextIntFromTo(0, 255), Random.uniform.nextIntFromTo(0, 255),
 				Random.uniform.nextIntFromTo(0, 255));
 
-		SensingAgent agent = new SensingAgent(x, y, color, space);
+		SensingAgent agent = new SensingAgent(x, y, color, space, this);
 
 		space.putObjectAt(x, y, agent);
 		agentList.add(agent);
@@ -151,11 +151,6 @@ public class OurModel extends Repast3Launcher {
 		getSchedule().scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
 	}
 
-	/**
-	 * Launching Repast3
-	 * 
-	 * @param args
-	 */
 	public static void main(String[] args) {
 		boolean BATCH_MODE = false;
 
