@@ -23,42 +23,54 @@ public class OurModel extends Repast3Launcher {
 
 	private ContainerController mainContainer;
 
-	private ArrayList<SensingAgent> agentList;
 	private DisplaySurface displaySurface;
-	private Object2DGrid space;
 	private OpenSequenceGraph plot;
 
-	private int numberOfAgents, spaceSize;
+	private Object2DGrid river;
+	private ArrayList<SensingAgent> sensors;
+
+	private int riverWidth, riverHeight;
+	private int numberOfSensors;
 
 	public OurModel() {
-		this.numberOfAgents = 10;
-		this.spaceSize = 100;
+		this.numberOfSensors = 10;
+
+		this.riverWidth = 100;
+		this.riverHeight = 20;
 	}
 
 	@Override
 	public String getName() {
-		return "MA Sensing Network";
+		return "AIAD - MA Sensing Network";
 	}
 
 	@Override
 	public String[] getInitParam() {
-		return new String[] { "numberOfAgents", "spaceSize" };
+		return new String[] { "numberOfSensors", "riverWidth", "riverHeight" };
 	}
 
-	public int getNumberOfAgents() {
-		return numberOfAgents;
+	public int getNumberOfSensors() {
+		return numberOfSensors;
 	}
 
-	public void setNumberOfAgents(int numberOfAgents) {
-		this.numberOfAgents = numberOfAgents;
+	public void setNumberOfSensors(int numberOfSensors) {
+		this.numberOfSensors = numberOfSensors;
 	}
 
-	public int getSpaceSize() {
-		return spaceSize;
+	public int getRiverWidth() {
+		return riverWidth;
 	}
 
-	public void setSpaceSize(int spaceSize) {
-		this.spaceSize = spaceSize;
+	public void setRiverWidth(int riverWidth) {
+		this.riverWidth = riverWidth;
+	}
+
+	public int getRiverHeight() {
+		return riverWidth;
+	}
+
+	public void setRiverHeight(int riverHeight) {
+		this.riverHeight = riverHeight;
 	}
 
 	public void setup() {
@@ -67,8 +79,10 @@ public class OurModel extends Repast3Launcher {
 		if (displaySurface != null)
 			displaySurface.dispose();
 
-		displaySurface = new DisplaySurface(this, "Color Picking Display");
-		registerDisplaySurface("Color Picking Display", displaySurface);
+		String displaySurfaceName = "River - top view";
+
+		displaySurface = new DisplaySurface(this, displaySurfaceName);
+		registerDisplaySurface(displaySurfaceName, displaySurface);
 	}
 
 	@Override
@@ -82,8 +96,8 @@ public class OurModel extends Repast3Launcher {
 
 	public void launchAgents() {
 		try {
-			for (int i = 1; i <= numberOfAgents; i++)
-				mainContainer.acceptNewAgent("Bot" + i, spawnAgent()).start();
+			for (int i = 1; i <= numberOfSensors; i++)
+				mainContainer.acceptNewAgent("Bot" + i, spawnSensor()).start();
 		} catch (StaleProxyException e) {
 			e.printStackTrace();
 		}
@@ -99,33 +113,30 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	private void buildModel() {
-		agentList = new ArrayList<SensingAgent>();
-		space = new Object2DGrid(spaceSize, spaceSize);
+		sensors = new ArrayList<SensingAgent>();
+		river = new Object2DGrid(riverWidth, riverHeight);
 	}
 
-	SensingAgent spawnAgent() {
+	SensingAgent spawnSensor() {
 		int x, y;
 
 		do {
-			x = Random.uniform.nextIntFromTo(0, space.getSizeX() - 1);
-			y = Random.uniform.nextIntFromTo(0, space.getSizeY() - 1);
-		} while (space.getObjectAt(x, y) != null);
+			x = Random.uniform.nextIntFromTo(0, river.getSizeX() - 1);
+			y = Random.uniform.nextIntFromTo(0, river.getSizeY() - 1);
+		} while (river.getObjectAt(x, y) != null);
 
-		Color color = new Color(Random.uniform.nextIntFromTo(0, 255), Random.uniform.nextIntFromTo(0, 255),
-				Random.uniform.nextIntFromTo(0, 255));
+		SensingAgent agent = new SensingAgent(x, y, Color.RED, river, this);
 
-		SensingAgent agent = new SensingAgent(x, y, color, space, this);
-
-		space.putObjectAt(x, y, agent);
-		agentList.add(agent);
+		river.putObjectAt(x, y, agent);
+		sensors.add(agent);
 
 		return agent;
 	}
 
 	private void buildDisplay() {
 		// space and display surface
-		Object2DDisplay display = new Object2DDisplay(space);
-		display.setObjectList(agentList);
+		Object2DDisplay display = new Object2DDisplay(river);
+		display.setObjectList(sensors);
 		displaySurface.addDisplayableProbeable(display, "Agents Space");
 		displaySurface.display();
 
@@ -139,7 +150,7 @@ public class OurModel extends Repast3Launcher {
 		// plot number of different existing colors
 		plot.addSequence("Number of agents", new Sequence() {
 			public double getSValue() {
-				return agentList.size();
+				return sensors.size();
 			}
 		});
 
