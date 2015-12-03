@@ -1,7 +1,9 @@
 package agents;
 
 import java.awt.Color;
+import java.util.Vector;
 
+import entities.Water;
 import launcher.OurModel;
 import sajas.core.Agent;
 import sajas.core.behaviours.CyclicBehaviour;
@@ -29,34 +31,32 @@ public class SensingAgent extends Agent implements Drawable {
 	protected void setup() {
 		System.out.println("Agent " + getLocalName() + " started.");
 
-		// Add the TickerBehaviour (period 1 second)
 		addBehaviour(new CyclicBehaviour(this) {
 
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void action() {
-				walk();
-				System.out.println(model.getTickCount());
+				System.out.println("Ticks: " + model.getTickCount());
+
+				sampleEnvironment();
 			}
 
 		});
 	}
 
+	public void sampleEnvironment() {
+		System.out.println(getLocalName() + " is sampling the environment...");
+
+		Vector<Water> neighbors = space.getMooreNeighbors(x, y, false);
+
+		for (Water neighbor : neighbors)
+			System.out.println(neighbor.getColor().toString());
+	}
+
 	@Override
 	public void draw(SimGraphics g) {
 		g.drawFastCircle(color);
-	}
-
-	public void walk() {
-		System.out.println("Agent " + getLocalName() + " started.");
-		space.putObjectAt(this.x, this.y, null);
-
-
-		if (x >= space.getSizeX())
-			this.doDelete();
-		else
-			space.putObjectAt(this.x, this.y, this);
 	}
 
 	@Override
@@ -67,10 +67,6 @@ public class SensingAgent extends Agent implements Drawable {
 	@Override
 	public int getY() {
 		return y;
-	}
-
-	public Color getColor() {
-		return color;
 	}
 
 }

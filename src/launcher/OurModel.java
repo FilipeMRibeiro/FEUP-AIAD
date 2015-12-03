@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.util.ArrayList;
 
 import agents.SensingAgent;
+import entities.Water;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.wrapper.StaleProxyException;
@@ -27,16 +28,16 @@ public class OurModel extends Repast3Launcher {
 	private OpenSequenceGraph plot;
 
 	private Object2DGrid river;
-	private ArrayList<SensingAgent> sensors;
+	private ArrayList<Object> riverCells;
 
 	private int riverWidth, riverHeight;
 	private int numberOfSensors;
 
 	public OurModel() {
-		this.numberOfSensors = 10;
+		numberOfSensors = 1;
 
-		this.riverWidth = 100;
-		this.riverHeight = 20;
+		riverWidth = 70;
+		riverHeight = 20;
 	}
 
 	@Override
@@ -66,7 +67,7 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	public int getRiverHeight() {
-		return riverWidth;
+		return riverHeight;
 	}
 
 	public void setRiverHeight(int riverHeight) {
@@ -97,10 +98,39 @@ public class OurModel extends Repast3Launcher {
 	public void launchAgents() {
 		try {
 			for (int i = 1; i <= numberOfSensors; i++)
-				mainContainer.acceptNewAgent("Bot" + i, spawnSensor()).start();
+				mainContainer.acceptNewAgent("Bot-" + i, spawnSensor()).start();
 		} catch (StaleProxyException e) {
 			e.printStackTrace();
 		}
+
+		pourRiverWater();
+	}
+
+	SensingAgent spawnSensor() {
+		int x, y;
+
+		do {
+			x = Random.uniform.nextIntFromTo(0, river.getSizeX() - 1);
+			y = Random.uniform.nextIntFromTo(0, river.getSizeY() - 1);
+		} while (river.getObjectAt(x, y) != null);
+
+		SensingAgent agent = new SensingAgent(x, y, Color.YELLOW, river, this);
+
+		river.putObjectAt(x, y, agent);
+		riverCells.add(agent);
+
+		return agent;
+	}
+
+	private void pourRiverWater() {
+		for (int x = 0; x < riverWidth; x++)
+			for (int y = 0; y < riverHeight; y++)
+				if (river.getObjectAt(x, y) == null) {
+					Water water = new Water(x, y);
+
+					river.putObjectAt(x, y, water);
+					riverCells.add(water);
+				}
 	}
 
 	public void begin() {
@@ -113,30 +143,14 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	private void buildModel() {
-		sensors = new ArrayList<SensingAgent>();
 		river = new Object2DGrid(riverWidth, riverHeight);
-	}
-
-	SensingAgent spawnSensor() {
-		int x, y;
-
-		do {
-			x = Random.uniform.nextIntFromTo(0, river.getSizeX() - 1);
-			y = Random.uniform.nextIntFromTo(0, river.getSizeY() - 1);
-		} while (river.getObjectAt(x, y) != null);
-
-		SensingAgent agent = new SensingAgent(x, y, Color.RED, river, this);
-
-		river.putObjectAt(x, y, agent);
-		sensors.add(agent);
-
-		return agent;
+		riverCells = new ArrayList<Object>();
 	}
 
 	private void buildDisplay() {
 		// space and display surface
 		Object2DDisplay display = new Object2DDisplay(river);
-		display.setObjectList(sensors);
+		display.setObjectList(riverCells);
 		displaySurface.addDisplayableProbeable(display, "Agents Space");
 		displaySurface.display();
 
@@ -150,7 +164,7 @@ public class OurModel extends Repast3Launcher {
 		// plot number of different existing colors
 		plot.addSequence("Number of agents", new Sequence() {
 			public double getSValue() {
-				return sensors.size();
+				return riverCells.size();
 			}
 		});
 
