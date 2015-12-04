@@ -48,10 +48,12 @@ public class SensingAgent extends Agent implements Drawable {
 	public void sampleEnvironment() {
 		System.out.println(getLocalName() + " is sampling the environment...");
 
-		Vector<Water> neighbors = space.getMooreNeighbors(x, y, false);
+		Vector<?> neighbors = space.getMooreNeighbors(x, y, false);
 
-		for (Water neighbor : neighbors)
-			System.out.println(neighbor.getColor().toString());
+		for (Object neighbor : neighbors)
+			if (neighbor instanceof Water)
+				System.out.println(((Water) neighbor).getPolution());
+		System.out.println();
 	}
 
 	@Override

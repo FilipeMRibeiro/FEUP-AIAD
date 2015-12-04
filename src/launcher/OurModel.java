@@ -34,7 +34,7 @@ public class OurModel extends Repast3Launcher {
 	private int numberOfSensors;
 
 	public OurModel() {
-		numberOfSensors = 1;
+		numberOfSensors = 100;
 
 		riverWidth = 70;
 		riverHeight = 20;
