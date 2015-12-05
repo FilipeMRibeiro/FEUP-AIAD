@@ -15,6 +15,7 @@ import uchicago.src.sim.analysis.OpenSequenceGraph;
 import uchicago.src.sim.analysis.Sequence;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimInit;
+import uchicago.src.sim.gui.DisplayConstants;
 import uchicago.src.sim.gui.DisplaySurface;
 import uchicago.src.sim.gui.Object2DDisplay;
 import uchicago.src.sim.space.Object2DGrid;
@@ -30,14 +31,27 @@ public class OurModel extends Repast3Launcher {
 	private Object2DGrid river;
 	private ArrayList<Object> riverCells;
 
-	private int riverWidth, riverHeight;
 	private int numberOfSensors;
+	private int riverWidth, riverHeight;
+
+	private float sedimentationFactor;
+	private float alpha, beta, gamma;
 
 	public OurModel() {
 		numberOfSensors = 100;
 
-		riverWidth = 70;
-		riverHeight = 20;
+		int cellsPerKm = 10;
+		riverWidth = 50 * cellsPerKm;
+		riverHeight = 2 * cellsPerKm;
+
+		int cellSize = (int) Math.max(1, -0.8 * cellsPerKm + 11);
+		DisplayConstants.CELL_WIDTH = cellSize;
+		DisplayConstants.CELL_HEIGHT = cellSize;
+
+		sedimentationFactor = 0.03f;
+		alpha = .4f;
+		beta = .3f;
+		gamma = .4f;
 	}
 
 	@Override
@@ -47,7 +61,8 @@ public class OurModel extends Repast3Launcher {
 
 	@Override
 	public String[] getInitParam() {
-		return new String[] { "numberOfSensors", "riverWidth", "riverHeight" };
+		return new String[] { "numberOfSensors", "riverWidth", "riverHeight", "sedimentationFactor", "alpha", "beta",
+				"gamma" };
 	}
 
 	public int getNumberOfSensors() {
@@ -72,6 +87,38 @@ public class OurModel extends Repast3Launcher {
 
 	public void setRiverHeight(int riverHeight) {
 		this.riverHeight = riverHeight;
+	}
+
+	public float getSedimentationFactor() {
+		return sedimentationFactor;
+	}
+
+	public void setSedimentationFactor(float sedimentationFactor) {
+		this.sedimentationFactor = sedimentationFactor;
+	}
+
+	public float getAlpha() {
+		return alpha;
+	}
+
+	public void setAlpha(float alpha) {
+		this.alpha = alpha;
+	}
+
+	public float getBeta() {
+		return beta;
+	}
+
+	public void setBeta(float beta) {
+		this.beta = beta;
+	}
+
+	public float getGamma() {
+		return gamma;
+	}
+
+	public void setGamma(float gamma) {
+		this.gamma = gamma;
 	}
 
 	public void setup() {
@@ -123,23 +170,22 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	private void pourRiverWater() {
-		for (int x = 0; x < riverWidth; x++)
-			for (int y = 0; y < riverHeight; y++)
-				if (river.getObjectAt(x, y) == null) {
-					Water water = new Water(x, y);
+		for (int x = 0; x < riverWidth; x++) {
+			for (int y = 0; y < riverHeight; y++) {
+				Water water = new Water(x, y);
 
-					river.putObjectAt(x, y, water);
-					riverCells.add(water);
-				}
+				river.putObjectAt(x, y, water);
+				riverCells.add(water);
+			}
+		}
 	}
 
 	public void begin() {
 		buildModel();
 		buildDisplay();
+		buildSchedule();
 
 		super.begin();
-
-		buildSchedule();
 	}
 
 	private void buildModel() {
@@ -171,7 +217,30 @@ public class OurModel extends Repast3Launcher {
 		plot.display();
 	}
 
+	public int polutionAt(int x, int y) {
+		return ((Water) river.getObjectAt(x, y)).getPolution();
+	}
+
+	public void testStep() {
+		for (int x = 1; x < riverWidth - 1; x++) {
+			for (int y = 1; y < riverHeight; y++) {
+				/*
+				 * River(x, y) = (1 - ρ)River(x, y) + ρ(α(River(x - 1, y - 1)) +
+				 * β(River(x, y - 1)) + γ(River(x + 1, y - 1)))
+				 */
+				Water water = (Water) river.getObjectAt(x, y);
+
+				float p = (1 - sedimentationFactor) * polutionAt(x, y)
+						+ sedimentationFactor * (alpha * polutionAt(x - 1, y - 1) + beta * polutionAt(x, y - 1)
+								+ gamma * polutionAt(x + 1, y - 1));
+
+				water.setPolution((int) p);
+			}
+		}
+	}
+
 	private void buildSchedule() {
+		getSchedule().scheduleActionBeginning(1, this, "testStep");
 		getSchedule().scheduleActionAtInterval(1, displaySurface, "updateDisplay", Schedule.LAST);
 		getSchedule().scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
 	}

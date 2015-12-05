@@ -16,18 +16,22 @@ public class Water implements Drawable {
 		this.x = x;
 		this.y = y;
 
-		this.polution = Random.uniform.nextIntFromTo(0, 255);
-
-		this.color = new Color(polution, 0, 255);
+		setPolution(Random.uniform.nextIntFromTo(0, 255));
 	}
 
 	public int getPolution() {
 		return polution;
 	}
 
+	public void setPolution(int polution) {
+		this.polution = polution;
+		this.color = new Color(polution, 0, 255);
+	}
+
 	@Override
 	public void draw(SimGraphics g) {
 		g.drawFastCircle(color);
+		// g.drawFastRect(color);
 	}
 
 	@Override
