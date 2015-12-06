@@ -58,7 +58,7 @@ public class SensingAgent extends Agent implements Drawable {
 
 	@Override
 	public void draw(SimGraphics g) {
-		g.drawFastCircle(color);
+		g.drawFastRect(color);
 	}
 
 	@Override

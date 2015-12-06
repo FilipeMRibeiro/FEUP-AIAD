@@ -32,8 +32,7 @@ public class Water implements Drawable {
 
 	@Override
 	public void draw(SimGraphics g) {
-		g.drawFastCircle(color);
-		// g.drawFastRect(color);
+		g.drawFastRect(color);
 	}
 
 	@Override
