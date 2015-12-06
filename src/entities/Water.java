@@ -4,15 +4,10 @@ import java.awt.Color;
 
 import uchicago.src.sim.gui.Drawable;
 import uchicago.src.sim.gui.SimGraphics;
-import uchicago.src.sim.util.Random;
 
 public class Water implements Drawable {
 
 	public static final int MAX_POLLUTION = 1000;
-
-	public static final int getRandomPollutionLevel() {
-		return Random.uniform.nextIntFromTo(0, MAX_POLLUTION);
-	}
 
 	private int x, y;
 	private float pollution;
