@@ -8,24 +8,31 @@ import uchicago.src.sim.util.Random;
 
 public class Water implements Drawable {
 
+	public static final int MAX_POLLUTION = 1000;
+
+	public static final int getRandomPollutionLevel() {
+		return Random.uniform.nextIntFromTo(0, MAX_POLLUTION);
+	}
+
 	private int x, y;
-	private int polution;
+	private float pollution;
 	private Color color;
 
 	public Water(int x, int y) {
 		this.x = x;
 		this.y = y;
 
-		setPolution(Random.uniform.nextIntFromTo(0, 255));
+		setPollution(0);
 	}
 
-	public int getPolution() {
-		return polution;
+	public float getPollution() {
+		return pollution;
 	}
 
-	public void setPolution(int polution) {
-		this.polution = polution;
-		this.color = new Color(polution, 0, 255);
+	public void setPollution(float pollution) {
+		this.pollution = pollution > MAX_POLLUTION ? MAX_POLLUTION : pollution;
+
+		this.color = new Color((int) this.pollution * 255 / MAX_POLLUTION, 0, 255);
 	}
 
 	@Override

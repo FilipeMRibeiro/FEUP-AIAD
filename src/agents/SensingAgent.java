@@ -52,7 +52,7 @@ public class SensingAgent extends Agent implements Drawable {
 
 		for (Object neighbor : neighbors)
 			if (neighbor instanceof Water)
-				System.out.println(((Water) neighbor).getPolution());
+				System.out.print(((Water) neighbor).getPollution() + " ");
 		System.out.println();
 	}
 

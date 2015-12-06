@@ -34,13 +34,14 @@ public class OurModel extends Repast3Launcher {
 	private int numberOfSensors;
 	private int riverWidth, riverHeight;
 
+	private int pollutionStainVerticalPosition;
 	private float sedimentationFactor;
 	private float alpha, beta, gamma;
 
 	public OurModel() {
 		numberOfSensors = 100;
 
-		int cellsPerKm = 10;
+		int cellsPerKm = 8;
 		riverWidth = 50 * cellsPerKm;
 		riverHeight = 2 * cellsPerKm;
 
@@ -48,77 +49,25 @@ public class OurModel extends Repast3Launcher {
 		DisplayConstants.CELL_WIDTH = cellSize;
 		DisplayConstants.CELL_HEIGHT = cellSize;
 
-		sedimentationFactor = 0.03f;
-		alpha = .4f;
-		beta = .3f;
-		gamma = .4f;
+		pollutionStainVerticalPosition = riverHeight / 3;
+		sedimentationFactor = 0.99f;
+
+		// the following values must add up to exactly 1.0
+		alpha = 0.1f;
+		beta = 0.8f;
+		gamma = 0.1f;
 	}
 
-	@Override
-	public String getName() {
-		return "AIAD - MA Sensing Network";
-	}
-
-	@Override
-	public String[] getInitParam() {
-		return new String[] { "numberOfSensors", "riverWidth", "riverHeight", "sedimentationFactor", "alpha", "beta",
-				"gamma" };
-	}
-
-	public int getNumberOfSensors() {
-		return numberOfSensors;
-	}
-
-	public void setNumberOfSensors(int numberOfSensors) {
-		this.numberOfSensors = numberOfSensors;
-	}
-
-	public int getRiverWidth() {
-		return riverWidth;
-	}
-
-	public void setRiverWidth(int riverWidth) {
-		this.riverWidth = riverWidth;
-	}
-
-	public int getRiverHeight() {
-		return riverHeight;
-	}
-
-	public void setRiverHeight(int riverHeight) {
-		this.riverHeight = riverHeight;
-	}
-
-	public float getSedimentationFactor() {
-		return sedimentationFactor;
-	}
-
-	public void setSedimentationFactor(float sedimentationFactor) {
-		this.sedimentationFactor = sedimentationFactor;
-	}
-
-	public float getAlpha() {
-		return alpha;
-	}
-
-	public void setAlpha(float alpha) {
-		this.alpha = alpha;
-	}
-
-	public float getBeta() {
-		return beta;
-	}
-
-	public void setBeta(float beta) {
-		this.beta = beta;
-	}
-
-	public float getGamma() {
-		return gamma;
-	}
-
-	public void setGamma(float gamma) {
-		this.gamma = gamma;
+	/**
+	 * The river flows according to this expression.
+	 * 
+	 * @param x
+	 * @param y
+	 * @return The next pollution level at this river position.
+	 */
+	private float nextPollutionLevelAt(int x, int y) {
+		return (1 - sedimentationFactor) * pollutionAt(x, y) + sedimentationFactor * (alpha * pollutionAt(x + 1, y - 1)
+				+ beta * pollutionAt(x + 1, y) + gamma * pollutionAt(x + 1, y + 1));
 	}
 
 	public void setup() {
@@ -217,30 +166,38 @@ public class OurModel extends Repast3Launcher {
 		plot.display();
 	}
 
-	public int polutionAt(int x, int y) {
-		return ((Water) river.getObjectAt(x, y)).getPolution();
+	public float pollutionAt(int x, int y) {
+		float pollution = 0;
+
+		if (0 <= x && x < river.getSizeX() && 0 <= y && y < river.getSizeY()) {
+			// if the position is inside the river boundaries
+
+			pollution = ((Water) river.getObjectAt(x, y)).getPollution();
+		} else if (river.getSizeX() - 1 < x && Math.abs(pollutionStainVerticalPosition - y) < riverHeight / 4) {
+			// if the position is near the pollution stain
+
+			float oscillation = (float) Math.sin(getTickCount() / 4);
+
+			pollution = oscillation <= 0 ? 0 : oscillation * Water.MAX_POLLUTION;
+		}
+
+		return pollution;
 	}
 
-	public void testStep() {
-		for (int x = 1; x < riverWidth - 1; x++) {
-			for (int y = 1; y < riverHeight; y++) {
-				/*
-				 * River(x, y) = (1 - ρ)River(x, y) + ρ(α(River(x - 1, y - 1)) +
-				 * β(River(x, y - 1)) + γ(River(x + 1, y - 1)))
-				 */
-				Water water = (Water) river.getObjectAt(x, y);
+	public void updateRiver() {
+		float nextPollutionLevels[][] = new float[riverWidth][riverHeight];
 
-				float p = (1 - sedimentationFactor) * polutionAt(x, y)
-						+ sedimentationFactor * (alpha * polutionAt(x - 1, y - 1) + beta * polutionAt(x, y - 1)
-								+ gamma * polutionAt(x + 1, y - 1));
+		for (int x = 0; x < riverWidth; x++)
+			for (int y = 0; y < riverHeight; y++)
+				nextPollutionLevels[x][y] = nextPollutionLevelAt(x, y);
 
-				water.setPolution((int) p);
-			}
-		}
+		for (int x = 0; x < riverWidth; x++)
+			for (int y = 0; y < riverHeight; y++)
+				((Water) river.getObjectAt(x, y)).setPollution(nextPollutionLevels[x][y]);
 	}
 
 	private void buildSchedule() {
-		getSchedule().scheduleActionBeginning(1, this, "testStep");
+		getSchedule().scheduleActionBeginning(1, this, "updateRiver");
 		getSchedule().scheduleActionAtInterval(1, displaySurface, "updateDisplay", Schedule.LAST);
 		getSchedule().scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
 	}
@@ -251,6 +208,73 @@ public class OurModel extends Repast3Launcher {
 		SimInit init = new SimInit();
 		init.setNumRuns(1); // works only in batch mode
 		init.loadModel(new OurModel(), null, BATCH_MODE);
+	}
+
+	@Override
+	public String getName() {
+		return "AIAD - MA Sensing Network";
+	}
+
+	@Override
+	public String[] getInitParam() {
+		return new String[] { "numberOfSensors", "riverWidth", "riverHeight", "sedimentationFactor", "alpha", "beta",
+				"gamma" };
+	}
+
+	public int getNumberOfSensors() {
+		return numberOfSensors;
+	}
+
+	public void setNumberOfSensors(int numberOfSensors) {
+		this.numberOfSensors = numberOfSensors;
+	}
+
+	public int getRiverWidth() {
+		return riverWidth;
+	}
+
+	public void setRiverWidth(int riverWidth) {
+		this.riverWidth = riverWidth;
+	}
+
+	public int getRiverHeight() {
+		return riverHeight;
+	}
+
+	public void setRiverHeight(int riverHeight) {
+		this.riverHeight = riverHeight;
+	}
+
+	public float getSedimentationFactor() {
+		return sedimentationFactor;
+	}
+
+	public void setSedimentationFactor(float sedimentationFactor) {
+		this.sedimentationFactor = sedimentationFactor;
+	}
+
+	public float getAlpha() {
+		return alpha;
+	}
+
+	public void setAlpha(float alpha) {
+		this.alpha = alpha;
+	}
+
+	public float getBeta() {
+		return beta;
+	}
+
+	public void setBeta(float beta) {
+		this.beta = beta;
+	}
+
+	public float getGamma() {
+		return gamma;
+	}
+
+	public void setGamma(float gamma) {
+		this.gamma = gamma;
 	}
 
 }
