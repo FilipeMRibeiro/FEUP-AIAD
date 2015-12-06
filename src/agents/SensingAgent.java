@@ -14,17 +14,19 @@ import uchicago.src.sim.space.Object2DGrid;
 public class SensingAgent extends Agent implements Drawable {
 
 	private final OurModel model;
-
-	private int x, y;
-	private Color color;
 	private Object2DGrid space;
 
-	public SensingAgent(int x, int y, Color color, Object2DGrid space, OurModel model) {
+	private int x, y;
+	private float batteryLevel;
+	private Color color;
+
+	public SensingAgent(int x, int y, Object2DGrid space, OurModel model) {
 		this.x = x;
 		this.y = y;
-		this.color = color;
-		this.space = space;
+		this.batteryLevel = 100;
+		this.color = Color.GREEN;
 
+		this.space = space;
 		this.model = model;
 	}
 
@@ -37,9 +39,13 @@ public class SensingAgent extends Agent implements Drawable {
 
 			@Override
 			public void action() {
+				System.out.println(getLocalName() + " battery level: " + batteryLevel);
 				System.out.println("Ticks: " + model.getTickCount());
 
-				sampleEnvironment();
+				if (batteryLevel > 0)
+					sampleEnvironment();
+
+				updateBatteryLevel();
 			}
 
 		});
@@ -54,6 +60,20 @@ public class SensingAgent extends Agent implements Drawable {
 			if (neighbor instanceof Water)
 				System.out.print(((Water) neighbor).getPollution() + " ");
 		System.out.println();
+	}
+
+	private void updateBatteryLevel() {
+		batteryLevel -= 0.001;
+
+		if (batteryLevel < 15)
+			color = Color.RED;
+		else if (batteryLevel < 60)
+			color = Color.YELLOW;
+		else
+			color = Color.GREEN;
+
+		if (batteryLevel < 0)
+			batteryLevel = 0;
 	}
 
 	@Override

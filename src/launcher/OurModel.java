@@ -2,6 +2,7 @@ package launcher;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Vector;
 
 import agents.SensingAgent;
 import entities.Water;
@@ -11,6 +12,7 @@ import jade.wrapper.StaleProxyException;
 import sajas.core.Runtime;
 import sajas.sim.repast3.Repast3Launcher;
 import sajas.wrapper.ContainerController;
+import uchicago.src.reflector.ListPropertyDescriptor;
 import uchicago.src.sim.analysis.OpenSequenceGraph;
 import uchicago.src.sim.analysis.Sequence;
 import uchicago.src.sim.engine.Schedule;
@@ -23,6 +25,10 @@ import uchicago.src.sim.util.Random;
 
 public class OurModel extends Repast3Launcher {
 
+	private static enum Scenario {
+		RandomPositions, ChainAlongRiver, GridAtTheEnd
+	}
+
 	private ContainerController mainContainer;
 
 	private DisplaySurface displaySurface;
@@ -32,6 +38,8 @@ public class OurModel extends Repast3Launcher {
 	private ArrayList<Water> waterCellsList;
 	private ArrayList<SensingAgent> sensorsList;
 
+	private Scenario scenario;
+
 	private int numberOfSensors;
 	private int riverWidth, riverHeight;
 
@@ -40,7 +48,9 @@ public class OurModel extends Repast3Launcher {
 	private float alpha, beta, gamma;
 
 	public OurModel() {
-		numberOfSensors = 10;
+		scenario = Scenario.RandomPositions;
+
+		numberOfSensors = scenario == Scenario.GridAtTheEnd ? 30 : 50;
 
 		int cellsPerKm = 10;
 		riverWidth = 50 * cellsPerKm;
@@ -71,6 +81,7 @@ public class OurModel extends Repast3Launcher {
 				+ beta * pollutionAt(x + 1, y) + gamma * pollutionAt(x + 1, y + 1));
 	}
 
+	@SuppressWarnings("unchecked")
 	public void setup() {
 		super.setup();
 
@@ -81,6 +92,12 @@ public class OurModel extends Repast3Launcher {
 
 		displaySurface = new DisplaySurface(this, displaySurfaceName);
 		registerDisplaySurface(displaySurfaceName, displaySurface);
+
+		// property descriptors
+		Vector<Scenario> vecScenarios = new Vector<Scenario>();
+		for (int i = 0; i < Scenario.values().length; i++)
+			vecScenarios.add(Scenario.values()[i]);
+		descriptors.put("Scenario", new ListPropertyDescriptor("Scenario", vecScenarios));
 	}
 
 	@Override
@@ -94,25 +111,53 @@ public class OurModel extends Repast3Launcher {
 
 	public void launchAgents() {
 		try {
-			for (int i = 1; i <= numberOfSensors; i++)
-				mainContainer.acceptNewAgent("S-" + i, spawnSensor()).start();
+			switch (scenario) {
+			case ChainAlongRiver: {
+				int y = river.getSizeY() / 2;
+				float spacing = (float) river.getSizeX() / numberOfSensors;
+
+				for (int i = 0; i < numberOfSensors; i++) {
+					int x = (int) (i * spacing);
+
+					SensingAgent agent = new SensingAgent(x, y, river, this);
+
+					river.putObjectAt(x, y, agent);
+					sensorsList.add(agent);
+
+					mainContainer.acceptNewAgent("S-" + i, agent).start();
+				}
+
+				break;
+			}
+
+			case GridAtTheEnd: {
+				break;
+			}
+
+			case RandomPositions: {
+				for (int i = 0; i < numberOfSensors; i++) {
+					int x = Random.uniform.nextIntFromTo(0, river.getSizeX() - 1);
+					int y = Random.uniform.nextIntFromTo(0, river.getSizeY() - 1);
+
+					SensingAgent agent = new SensingAgent(x, y, river, this);
+
+					river.putObjectAt(x, y, agent);
+					sensorsList.add(agent);
+
+					mainContainer.acceptNewAgent("S-" + i, agent).start();
+				}
+
+				break;
+			}
+
+			default:
+				break;
+			}
 		} catch (StaleProxyException e) {
 			e.printStackTrace();
 		}
 
 		pourRiverWater();
-	}
-
-	private SensingAgent spawnSensor() {
-		int x = Random.uniform.nextIntFromTo(0, river.getSizeX() - 1);
-		int y = Random.uniform.nextIntFromTo(0, river.getSizeY() - 1);
-
-		SensingAgent agent = new SensingAgent(x, y, Color.YELLOW, river, this);
-
-		river.putObjectAt(x, y, agent);
-		sensorsList.add(agent);
-
-		return agent;
 	}
 
 	private void pourRiverWater() {
@@ -219,16 +264,16 @@ public class OurModel extends Repast3Launcher {
 
 	@Override
 	public String[] getInitParam() {
-		return new String[] { "numberOfSensors", "riverWidth", "riverHeight", "sedimentationFactor", "alpha", "beta",
+		return new String[] { "scenario", "riverWidth", "riverHeight", "sedimentationFactor", "alpha", "beta",
 				"gamma" };
 	}
 
-	public int getNumberOfSensors() {
-		return numberOfSensors;
+	public Scenario getScenario() {
+		return scenario;
 	}
 
-	public void setNumberOfSensors(int numberOfSensors) {
-		this.numberOfSensors = numberOfSensors;
+	public void setScenario(Scenario scenario) {
+		this.scenario = scenario;
 	}
 
 	public int getRiverWidth() {
