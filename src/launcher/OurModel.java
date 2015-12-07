@@ -1,6 +1,5 @@
 package launcher;
 
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Vector;
 
@@ -49,8 +48,6 @@ public class OurModel extends Repast3Launcher {
 
 	public OurModel() {
 		scenario = Scenario.RandomPositions;
-
-		numberOfSensors = scenario == Scenario.GridAtTheEnd ? 30 : 50;
 
 		int cellsPerKm = 10;
 		riverWidth = 50 * cellsPerKm;
@@ -110,6 +107,8 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	public void launchAgents() {
+		numberOfSensors = scenario == Scenario.GridAtTheEnd ? 30 : 50;
+
 		try {
 			switch (scenario) {
 			case ChainAlongRiver: {
@@ -131,6 +130,20 @@ public class OurModel extends Repast3Launcher {
 			}
 
 			case GridAtTheEnd: {
+				for (int i = 0; i < numberOfSensors / 3; i++) {
+					for (int j = 0; j < 3; j++) {
+						int x = i * riverHeight / 4 + riverHeight / 4;
+						int y = (j + 1) * riverHeight / 4;
+
+						SensingAgent agent = new SensingAgent(x, y, river, this);
+
+						river.putObjectAt(x, y, agent);
+						sensorsList.add(agent);
+
+						mainContainer.acceptNewAgent("S-" + (i * 3 + j), agent).start();
+					}
+				}
+
 				break;
 			}
 
