@@ -7,6 +7,7 @@ import entities.Water;
 import launcher.OurModel;
 import sajas.core.Agent;
 import sajas.core.behaviours.CyclicBehaviour;
+import uchicago.src.sim.analysis.OpenSequenceGraph;
 import uchicago.src.sim.gui.Drawable;
 import uchicago.src.sim.gui.SimGraphics;
 import uchicago.src.sim.space.Object2DGrid;
@@ -19,6 +20,9 @@ public class SensingAgent extends Agent implements Drawable {
 	private int x, y;
 	private float batteryLevel;
 	private Color color;
+	private float pollutionDetected;
+
+	//public OpenSequenceGraph graph;
 
 	public SensingAgent(int x, int y, Object2DGrid space, OurModel model) {
 		this.x = x;
@@ -28,6 +32,7 @@ public class SensingAgent extends Agent implements Drawable {
 
 		this.space = space;
 		this.model = model;
+		this.pollutionDetected = 0;
 	}
 
 	protected void setup() {
@@ -39,6 +44,8 @@ public class SensingAgent extends Agent implements Drawable {
 
 			@Override
 			public void action() {
+
+				pollutionDetected = 0;
 				System.out.println(getLocalName() + " battery level: " + batteryLevel);
 				System.out.println("Ticks: " + model.getTickCount());
 
@@ -47,7 +54,6 @@ public class SensingAgent extends Agent implements Drawable {
 
 				updateBatteryLevel();
 			}
-
 		});
 	}
 
@@ -57,8 +63,10 @@ public class SensingAgent extends Agent implements Drawable {
 		Vector<?> neighbors = space.getMooreNeighbors(x, y, false);
 
 		for (Object neighbor : neighbors)
-			if (neighbor instanceof Water)
+			if (neighbor instanceof Water){
 				System.out.print(((Water) neighbor).getPollution() + " ");
+				this.pollutionDetected += ((Water) neighbor).getPollution();
+			}
 		System.out.println();
 	}
 
@@ -91,4 +99,7 @@ public class SensingAgent extends Agent implements Drawable {
 		return y;
 	}
 
+	public float getPollution(){
+		return pollutionDetected;
+	}
 }
