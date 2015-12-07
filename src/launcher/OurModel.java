@@ -13,10 +13,12 @@ import sajas.core.Runtime;
 import sajas.sim.repast3.Repast3Launcher;
 import sajas.wrapper.ContainerController;
 import uchicago.src.reflector.ListPropertyDescriptor;
+import uchicago.src.sim.analysis.OpenHistogram;
 import uchicago.src.sim.analysis.OpenSequenceGraph;
 import uchicago.src.sim.analysis.Sequence;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimInit;
+import uchicago.src.sim.engine.SimModel;
 import uchicago.src.sim.gui.DisplayConstants;
 import uchicago.src.sim.gui.DisplaySurface;
 import uchicago.src.sim.gui.Object2DDisplay;
@@ -33,6 +35,7 @@ public class OurModel extends Repast3Launcher {
 
 	private DisplaySurface displaySurface;
 	private OpenSequenceGraph plot;
+	private OpenSequenceGraph pollutionGraph;
 
 	private Object2DGrid river;
 	private ArrayList<Water> waterCellsList;
@@ -189,13 +192,28 @@ public class OurModel extends Repast3Launcher {
 		Object2DDisplay displayWater = new Object2DDisplay(river);
 		displayWater.setObjectList(waterCellsList);
 		displaySurface.addDisplayableProbeable(displayWater, "Show river");
-
+		
 		Object2DDisplay displaySensors = new Object2DDisplay(river);
 		displaySensors.setObjectList(sensorsList);
 		displaySurface.addDisplayableProbeable(displaySensors, "Show sensors");
 
 		displaySurface.display();
-
+		
+		//Sensors graph
+		pollutionGraph = new OpenSequenceGraph("POLLUTION DETECTED", this);
+		pollutionGraph.setAxisTitles("time", "pol");
+		pollutionGraph.addSequence("SENSOR 1", new Sequence(){
+			public double getSValue() {
+				return sensorsList.get(0).getPollution();
+			}
+		});
+		pollutionGraph.addSequence("SENSOR 2", new Sequence(){
+			public double getSValue() {
+				return sensorsList.get(1).getPollution();
+			}
+		});
+		pollutionGraph.display();
+		
 		// graph
 		if (plot != null)
 			plot.dispose();
@@ -247,6 +265,7 @@ public class OurModel extends Repast3Launcher {
 		getSchedule().scheduleActionBeginning(1, this, "updateRiver");
 		getSchedule().scheduleActionAtInterval(1, displaySurface, "updateDisplay", Schedule.LAST);
 		getSchedule().scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
+		getSchedule().scheduleActionAtInterval(1, pollutionGraph, "step", Schedule.LAST);
 	}
 
 	public static void main(String[] args) {
