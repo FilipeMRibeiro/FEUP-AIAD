@@ -1,13 +1,11 @@
 package agents;
 
 import java.awt.Color;
-import java.util.Vector;
 
 import entities.Water;
 import launcher.OurModel;
 import sajas.core.Agent;
 import sajas.core.behaviours.CyclicBehaviour;
-import uchicago.src.sim.analysis.OpenSequenceGraph;
 import uchicago.src.sim.gui.Drawable;
 import uchicago.src.sim.gui.SimGraphics;
 import uchicago.src.sim.space.Object2DGrid;
@@ -20,19 +18,17 @@ public class SensingAgent extends Agent implements Drawable {
 	private int x, y;
 	private float batteryLevel;
 	private Color color;
-	private float pollutionDetected;
-
-	//public OpenSequenceGraph graph;
+	private float lastSamplePollutionLevel;
 
 	public SensingAgent(int x, int y, Object2DGrid space, OurModel model) {
 		this.x = x;
 		this.y = y;
 		this.batteryLevel = 100;
 		this.color = Color.GREEN;
+		this.lastSamplePollutionLevel = 0;
 
 		this.space = space;
 		this.model = model;
-		this.pollutionDetected = 0;
 	}
 
 	protected void setup() {
@@ -44,8 +40,6 @@ public class SensingAgent extends Agent implements Drawable {
 
 			@Override
 			public void action() {
-
-				pollutionDetected = 0;
 				System.out.println(getLocalName() + " battery level: " + batteryLevel);
 				System.out.println("Ticks: " + model.getTickCount());
 
@@ -58,16 +52,11 @@ public class SensingAgent extends Agent implements Drawable {
 	}
 
 	public void sampleEnvironment() {
-		System.out.println(getLocalName() + " is sampling the environment...");
+		System.out.print(getLocalName() + " is sampling the environment... ");
 
-		Vector<?> neighbors = space.getMooreNeighbors(x, y, false);
+		lastSamplePollutionLevel = ((Water) space.getObjectAt(x, y)).getPollution();
 
-		for (Object neighbor : neighbors)
-			if (neighbor instanceof Water){
-				System.out.print(((Water) neighbor).getPollution() + " ");
-				this.pollutionDetected += ((Water) neighbor).getPollution();
-			}
-		System.out.println();
+		System.out.println("OK! (" + lastSamplePollutionLevel + ")");
 	}
 
 	private void updateBatteryLevel() {
@@ -99,7 +88,8 @@ public class SensingAgent extends Agent implements Drawable {
 		return y;
 	}
 
-	public float getPollution(){
-		return pollutionDetected;
+	public float getLastSamplePollutionLevel() {
+		return lastSamplePollutionLevel;
 	}
+
 }

@@ -12,12 +12,10 @@ import sajas.core.Runtime;
 import sajas.sim.repast3.Repast3Launcher;
 import sajas.wrapper.ContainerController;
 import uchicago.src.reflector.ListPropertyDescriptor;
-import uchicago.src.sim.analysis.OpenHistogram;
 import uchicago.src.sim.analysis.OpenSequenceGraph;
 import uchicago.src.sim.analysis.Sequence;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimInit;
-import uchicago.src.sim.engine.SimModel;
 import uchicago.src.sim.gui.DisplayConstants;
 import uchicago.src.sim.gui.DisplaySurface;
 import uchicago.src.sim.gui.Object2DDisplay;
@@ -69,18 +67,9 @@ public class OurModel extends Repast3Launcher {
 		gamma = 0.1f;
 	}
 
-	/**
-	 * The river flows according to this expression.
-	 * 
-	 * @param x
-	 * @param y
-	 * @return The next pollution level at this river position.
+	/*
+	 * This is called after the constructor.
 	 */
-	private float nextPollutionLevelAt(int x, int y) {
-		return (1 - sedimentationFactor) * pollutionAt(x, y) + sedimentationFactor * (alpha * pollutionAt(x + 1, y - 1)
-				+ beta * pollutionAt(x + 1, y) + gamma * pollutionAt(x + 1, y + 1));
-	}
-
 	@SuppressWarnings("unchecked")
 	public void setup() {
 		super.setup();
@@ -100,6 +89,120 @@ public class OurModel extends Repast3Launcher {
 		descriptors.put("Scenario", new ListPropertyDescriptor("Scenario", vecScenarios));
 	}
 
+	/*
+	 * This is called when the 'Play' button is pressed on the Repast GUI.
+	 */
+	public void begin() {
+		numberOfSensors = scenario == Scenario.GridAtTheEnd ? 30 : 50;
+
+		buildModel();
+		buildDisplay();
+		buildSchedule();
+
+		super.begin();
+	}
+
+	private void buildModel() {
+		river = new Object2DGrid(riverWidth, riverHeight);
+		waterCellsList = new ArrayList<Water>();
+		sensorsList = new ArrayList<SensingAgent>();
+	}
+
+	private void buildDisplay() {
+		Object2DDisplay displayWater = new Object2DDisplay(river);
+		displayWater.setObjectList(waterCellsList);
+		displaySurface.addDisplayableProbeable(displayWater, "Show river");
+
+		Object2DDisplay displaySensors = new Object2DDisplay(river);
+		displaySensors.setObjectList(sensorsList);
+		displaySurface.addDisplayableProbeable(displaySensors, "Show sensors");
+
+		displaySurface.display();
+
+		// sensors graph
+		if (pollutionGraph != null)
+			pollutionGraph.dispose();
+		pollutionGraph = new OpenSequenceGraph("Pollution Detected", this);
+		pollutionGraph.setAxisTitles("time", "pollution");
+
+		for (int i = 0; i < numberOfSensors; i++) {
+			final int iPrime = i;
+
+			pollutionGraph.addSequence("S-" + i, new Sequence() {
+				public double getSValue() {
+					return sensorsList.get(iPrime).getLastSamplePollutionLevel();
+				}
+			});
+		}
+
+		pollutionGraph.display();
+
+		// graph
+		if (plot != null)
+			plot.dispose();
+		plot = new OpenSequenceGraph("Colors and Agents", this);
+		plot.setAxisTitles("time", "n");
+
+		// plot number of different existing colors
+		plot.addSequence("Number of agents", new Sequence() {
+			public double getSValue() {
+				return waterCellsList.size();
+			}
+		});
+
+		plot.display();
+	}
+
+	private void buildSchedule() {
+		getSchedule().scheduleActionBeginning(1, this, "updateRiver");
+
+		getSchedule().scheduleActionAtInterval(1, displaySurface, "updateDisplay", Schedule.LAST);
+
+		getSchedule().scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
+		getSchedule().scheduleActionAtInterval(1, pollutionGraph, "step", Schedule.LAST);
+	}
+
+	public void updateRiver() {
+		float nextPollutionLevels[][] = new float[riverWidth][riverHeight];
+
+		for (int x = 0; x < riverWidth; x++)
+			for (int y = 0; y < riverHeight; y++)
+				nextPollutionLevels[x][y] = nextPollutionLevelAt(x, y);
+
+		for (int x = 0; x < riverWidth; x++)
+			for (int y = 0; y < riverHeight; y++)
+				((Water) river.getObjectAt(x, y)).setPollution(nextPollutionLevels[x][y]);
+	}
+
+	/*
+	 * The river flows according to this expression.
+	 */
+	private float nextPollutionLevelAt(int x, int y) {
+		return (1 - sedimentationFactor) * pollutionAt(x, y) + sedimentationFactor * (alpha * pollutionAt(x + 1, y - 1)
+				+ beta * pollutionAt(x + 1, y) + gamma * pollutionAt(x + 1, y + 1));
+	}
+
+	public float pollutionAt(int x, int y) {
+		float pollution = 0;
+
+		if (0 <= x && x < river.getSizeX() && 0 <= y && y < river.getSizeY()) {
+			// if the position is inside the river boundaries
+
+			pollution = ((Water) river.getObjectAt(x, y)).getPollution();
+		} else if (river.getSizeX() - 1 < x && Math.abs(pollutionStainVerticalPosition - y) < riverHeight / 4) {
+			// if the position is near the pollution stain
+
+			float oscillation = (float) Math.sin(getTickCount() / 4);
+
+			pollution = oscillation <= 0 ? 0 : oscillation * Water.MAX_POLLUTION;
+		}
+
+		return pollution;
+	}
+
+	/*
+	 * This is called by the begin.super() method.
+	 */
 	@Override
 	protected void launchJADE() {
 		Runtime rt = Runtime.instance();
@@ -110,8 +213,6 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	public void launchAgents() {
-		numberOfSensors = scenario == Scenario.GridAtTheEnd ? 30 : 50;
-
 		try {
 			switch (scenario) {
 			case ChainAlongRiver: {
@@ -187,99 +288,9 @@ public class OurModel extends Repast3Launcher {
 		}
 	}
 
-	public void begin() {
-		buildModel();
-		buildDisplay();
-		buildSchedule();
-
-		super.begin();
-	}
-
-	private void buildModel() {
-		river = new Object2DGrid(riverWidth, riverHeight);
-		waterCellsList = new ArrayList<Water>();
-		sensorsList = new ArrayList<SensingAgent>();
-	}
-
-	private void buildDisplay() {
-		Object2DDisplay displayWater = new Object2DDisplay(river);
-		displayWater.setObjectList(waterCellsList);
-		displaySurface.addDisplayableProbeable(displayWater, "Show river");
-		
-		Object2DDisplay displaySensors = new Object2DDisplay(river);
-		displaySensors.setObjectList(sensorsList);
-		displaySurface.addDisplayableProbeable(displaySensors, "Show sensors");
-
-		displaySurface.display();
-		
-		//Sensors graph
-		pollutionGraph = new OpenSequenceGraph("POLLUTION DETECTED", this);
-		pollutionGraph.setAxisTitles("time", "pol");
-		pollutionGraph.addSequence("SENSOR 1", new Sequence(){
-			public double getSValue() {
-				return sensorsList.get(0).getPollution();
-			}
-		});
-		pollutionGraph.addSequence("SENSOR 2", new Sequence(){
-			public double getSValue() {
-				return sensorsList.get(1).getPollution();
-			}
-		});
-		pollutionGraph.display();
-		
-		// graph
-		if (plot != null)
-			plot.dispose();
-
-		plot = new OpenSequenceGraph("Colors and Agents", this);
-		plot.setAxisTitles("time", "n");
-
-		// plot number of different existing colors
-		plot.addSequence("Number of agents", new Sequence() {
-			public double getSValue() {
-				return waterCellsList.size();
-			}
-		});
-
-		plot.display();
-	}
-
-	public float pollutionAt(int x, int y) {
-		float pollution = 0;
-
-		if (0 <= x && x < river.getSizeX() && 0 <= y && y < river.getSizeY()) {
-			// if the position is inside the river boundaries
-
-			pollution = ((Water) river.getObjectAt(x, y)).getPollution();
-		} else if (river.getSizeX() - 1 < x && Math.abs(pollutionStainVerticalPosition - y) < riverHeight / 4) {
-			// if the position is near the pollution stain
-
-			float oscillation = (float) Math.sin(getTickCount() / 4);
-
-			pollution = oscillation <= 0 ? 0 : oscillation * Water.MAX_POLLUTION;
-		}
-
-		return pollution;
-	}
-
-	public void updateRiver() {
-		float nextPollutionLevels[][] = new float[riverWidth][riverHeight];
-
-		for (int x = 0; x < riverWidth; x++)
-			for (int y = 0; y < riverHeight; y++)
-				nextPollutionLevels[x][y] = nextPollutionLevelAt(x, y);
-
-		for (int x = 0; x < riverWidth; x++)
-			for (int y = 0; y < riverHeight; y++)
-				((Water) river.getObjectAt(x, y)).setPollution(nextPollutionLevels[x][y]);
-	}
-
-	private void buildSchedule() {
-		getSchedule().scheduleActionBeginning(1, this, "updateRiver");
-		getSchedule().scheduleActionAtInterval(1, displaySurface, "updateDisplay", Schedule.LAST);
-		getSchedule().scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
-		getSchedule().scheduleActionAtInterval(1, pollutionGraph, "step", Schedule.LAST);
-	}
+	/*
+	 * Main, app name, parameters, and getters/setters section.
+	 */
 
 	public static void main(String[] args) {
 		boolean BATCH_MODE = false;
