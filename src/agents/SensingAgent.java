@@ -60,9 +60,9 @@ public class SensingAgent extends Agent implements Drawable {
 	}
 
 	private void updateBatteryLevel() {
-		batteryLevel -= 0.001;
+		batteryLevel -= 0.1; // 0.01;
 
-		if (batteryLevel < 15)
+		if (batteryLevel < 20)
 			color = Color.RED;
 		else if (batteryLevel < 60)
 			color = Color.YELLOW;
@@ -86,6 +86,10 @@ public class SensingAgent extends Agent implements Drawable {
 	@Override
 	public int getY() {
 		return y;
+	}
+
+	public float getBatteryLevel() {
+		return batteryLevel;
 	}
 
 	public float getLastSamplePollutionLevel() {

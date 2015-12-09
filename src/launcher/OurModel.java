@@ -1,6 +1,8 @@
 package launcher;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Vector;
 
 import agents.SensingAgent;
@@ -25,14 +27,14 @@ import uchicago.src.sim.util.Random;
 public class OurModel extends Repast3Launcher {
 
 	private static enum Scenario {
-		RandomPositions, ChainAlongRiver, GridAtTheEnd
+		ChainAlongRiver, GridAtTheEnd, RandomPositions
 	}
 
 	private ContainerController mainContainer;
 
 	private DisplaySurface displaySurface;
-	private OpenSequenceGraph plot;
 	private OpenSequenceGraph pollutionGraph;
+	private OpenSequenceGraph energyPlot;
 
 	private Object2DGrid river;
 	private ArrayList<Water> waterCellsList;
@@ -48,7 +50,7 @@ public class OurModel extends Repast3Launcher {
 	private float alpha, beta, gamma;
 
 	public OurModel() {
-		scenario = Scenario.RandomPositions;
+		scenario = Scenario.ChainAlongRiver;
 
 		int cellsPerKm = 10;
 		riverWidth = 50 * cellsPerKm;
@@ -119,9 +121,14 @@ public class OurModel extends Repast3Launcher {
 
 		displaySurface.display();
 
-		// sensors graph
+		initPollutionPlot();
+		initEnergyPlot();
+	}
+
+	private void initPollutionPlot() {
 		if (pollutionGraph != null)
 			pollutionGraph.dispose();
+
 		pollutionGraph = new OpenSequenceGraph("Pollution Detected", this);
 		pollutionGraph.setAxisTitles("time", "pollution");
 
@@ -129,28 +136,46 @@ public class OurModel extends Repast3Launcher {
 			final int iPrime = i;
 
 			pollutionGraph.addSequence("S-" + i, new Sequence() {
+
+				@Override
 				public double getSValue() {
 					return sensorsList.get(iPrime).getLastSamplePollutionLevel();
 				}
+
 			});
 		}
 
 		pollutionGraph.display();
+	}
 
-		// graph
-		if (plot != null)
-			plot.dispose();
-		plot = new OpenSequenceGraph("Colors and Agents", this);
-		plot.setAxisTitles("time", "n");
+	private void initEnergyPlot() {
+		if (energyPlot != null)
+			energyPlot.dispose();
 
-		// plot number of different existing colors
-		plot.addSequence("Number of agents", new Sequence() {
+		energyPlot = new OpenSequenceGraph("Agents energy median", this);
+		energyPlot.setAxisTitles("time", "energy");
+
+		energyPlot.addSequence("Energy median", new Sequence() {
+
+			@Override
 			public double getSValue() {
-				return waterCellsList.size();
+				List<Float> batteryLevels = new ArrayList<Float>();
+
+				for (SensingAgent sensor : sensorsList)
+					batteryLevels.add(sensor.getBatteryLevel());
+
+				Collections.sort(batteryLevels);
+
+				int listSize = batteryLevels.size();
+				int listMiddle = listSize / 2;
+
+				return listSize % 2 == 0 ? (batteryLevels.get(listMiddle) + batteryLevels.get(listMiddle - 1)) / 2
+						: batteryLevels.get(listMiddle);
 			}
+
 		});
 
-		plot.display();
+		energyPlot.display();
 	}
 
 	private void buildSchedule() {
@@ -158,8 +183,8 @@ public class OurModel extends Repast3Launcher {
 
 		getSchedule().scheduleActionAtInterval(1, displaySurface, "updateDisplay", Schedule.LAST);
 
-		getSchedule().scheduleActionAtInterval(1, plot, "step", Schedule.LAST);
 		getSchedule().scheduleActionAtInterval(1, pollutionGraph, "step", Schedule.LAST);
+		getSchedule().scheduleActionAtInterval(1, energyPlot, "step", Schedule.LAST);
 	}
 
 	public void updateRiver() {
