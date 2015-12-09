@@ -297,7 +297,14 @@ public class OurModel extends Repast3Launcher {
 			e.printStackTrace();
 		}
 
+		buildSensorsNeighboursList();
+
 		pourRiverWater();
+	}
+
+	private void buildSensorsNeighboursList() {
+		for (SensingAgent sensor : sensorsList)
+			sensor.buildNeighboursList();
 	}
 
 	private void pourRiverWater() {
