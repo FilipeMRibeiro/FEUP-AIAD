@@ -7,7 +7,6 @@ import java.util.Vector;
 
 import agents.SensingAgent;
 import entities.Water;
-import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.wrapper.StaleProxyException;
 import sajas.core.Runtime;
@@ -145,7 +144,7 @@ public class OurModel extends Repast3Launcher {
 			});
 		}
 
-		pollutionGraph.display();
+		// pollutionGraph.display();
 	}
 
 	private void initEnergyPlot() {
@@ -183,7 +182,8 @@ public class OurModel extends Repast3Launcher {
 
 		getSchedule().scheduleActionAtInterval(1, displaySurface, "updateDisplay", Schedule.LAST);
 
-		getSchedule().scheduleActionAtInterval(1, pollutionGraph, "step", Schedule.LAST);
+		// getSchedule().scheduleActionAtInterval(1, pollutionGraph, "step",
+		// Schedule.LAST);
 		getSchedule().scheduleActionAtInterval(1, energyPlot, "step", Schedule.LAST);
 	}
 
@@ -230,9 +230,7 @@ public class OurModel extends Repast3Launcher {
 	 */
 	@Override
 	protected void launchJADE() {
-		Runtime rt = Runtime.instance();
-		Profile p1 = new ProfileImpl();
-		mainContainer = rt.createMainContainer(p1);
+		mainContainer = Runtime.instance().createMainContainer(new ProfileImpl());
 
 		launchAgents();
 	}
@@ -247,7 +245,7 @@ public class OurModel extends Repast3Launcher {
 				for (int i = 0; i < numberOfSensors; i++) {
 					int x = (int) (i * spacing);
 
-					SensingAgent agent = new SensingAgent(x, y, river, this);
+					SensingAgent agent = new SensingAgent(x, y, this);
 
 					river.putObjectAt(x, y, agent);
 					sensorsList.add(agent);
@@ -264,7 +262,7 @@ public class OurModel extends Repast3Launcher {
 						int x = i * riverHeight / 4 + riverHeight / 4;
 						int y = (j + 1) * riverHeight / 4;
 
-						SensingAgent agent = new SensingAgent(x, y, river, this);
+						SensingAgent agent = new SensingAgent(x, y, this);
 
 						river.putObjectAt(x, y, agent);
 						sensorsList.add(agent);
@@ -281,7 +279,7 @@ public class OurModel extends Repast3Launcher {
 					int x = Random.uniform.nextIntFromTo(0, river.getSizeX() - 1);
 					int y = Random.uniform.nextIntFromTo(0, river.getSizeY() - 1);
 
-					SensingAgent agent = new SensingAgent(x, y, river, this);
+					SensingAgent agent = new SensingAgent(x, y, this);
 
 					river.putObjectAt(x, y, agent);
 					sensorsList.add(agent);
@@ -390,6 +388,14 @@ public class OurModel extends Repast3Launcher {
 
 	public void setGamma(float gamma) {
 		this.gamma = gamma;
+	}
+
+	public Object2DGrid getRiver() {
+		return river;
+	}
+
+	public ArrayList<SensingAgent> getSensorsList() {
+		return sensorsList;
 	}
 
 }

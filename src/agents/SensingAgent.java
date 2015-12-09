@@ -3,6 +3,7 @@ package agents;
 import java.awt.Color;
 
 import entities.Water;
+import jade.lang.acl.ACLMessage;
 import launcher.OurModel;
 import sajas.core.Agent;
 import sajas.core.behaviours.CyclicBehaviour;
@@ -13,50 +14,66 @@ import uchicago.src.sim.space.Object2DGrid;
 public class SensingAgent extends Agent implements Drawable {
 
 	private final OurModel model;
-	private Object2DGrid space;
 
 	private int x, y;
 	private float batteryLevel;
 	private Color color;
 	private float lastSamplePollutionLevel;
 
-	public SensingAgent(int x, int y, Object2DGrid space, OurModel model) {
+	public SensingAgent(int x, int y, OurModel model) {
 		this.x = x;
 		this.y = y;
 		this.batteryLevel = 100;
 		this.color = Color.GREEN;
 		this.lastSamplePollutionLevel = 0;
 
-		this.space = space;
 		this.model = model;
 	}
 
 	protected void setup() {
 		System.out.println("Agent " + getLocalName() + " started.");
 
-		addBehaviour(new CyclicBehaviour(this) {
+		if (getLocalName().equals("S-30")) {
+			ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+			msg.addReceiver(model.getSensorsList().get(0).getAID());
+			msg.setLanguage("English");
+			msg.setOntology("Weather-forecast-ontology");
+			msg.setContent("Today it’s raining");
+			send(msg);
+		}
 
+		addBehaviour(new CyclicBehaviour(this) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void action() {
-				System.out.println(getLocalName() + " battery level: " + batteryLevel);
-				System.out.println("Ticks: " + model.getTickCount());
-
 				if (batteryLevel > 0)
 					sampleEnvironment();
 
 				updateBatteryLevel();
 			}
 		});
+
+		addBehaviour(new CyclicBehaviour(this) {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void action() {
+				ACLMessage msg = myAgent.receive();
+
+				if (msg != null) {
+					System.out.println("Received message from agent " + msg.getSender().getName());
+
+					batteryLevel = 0;
+				} else {
+					block();
+				}
+			}
+		});
 	}
 
 	public void sampleEnvironment() {
-		System.out.print(getLocalName() + " is sampling the environment... ");
-
-		lastSamplePollutionLevel = ((Water) space.getObjectAt(x, y)).getPollution();
-
-		System.out.println("OK! (" + lastSamplePollutionLevel + ")");
+		lastSamplePollutionLevel = ((Water) model.getRiver().getObjectAt(x, y)).getPollution();
 	}
 
 	private void updateBatteryLevel() {
