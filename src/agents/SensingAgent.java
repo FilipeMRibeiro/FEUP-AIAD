@@ -137,13 +137,14 @@ public class SensingAgent extends Agent implements Drawable {
 
 							System.out.println("Received sample: " + receivedSample);
 
-							if (receivedSample > lastSamplePollutionLevel)
-								sleep();
-
 							break;
 						}
 
 						case Ontologies.ADHERENCE: {
+							float receivedAdherence = Float.parseFloat(msg.getContent());
+
+							System.out.println("Received adhernce: " + receivedAdherence);
+
 							break;
 						}
 
@@ -163,6 +164,8 @@ public class SensingAgent extends Agent implements Drawable {
 					}
 
 					case Languages.ACK_ADHERENCE: {
+						sleep();
+
 						break;
 					}
 
