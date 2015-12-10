@@ -1,13 +1,18 @@
 package agents;
 
 import java.awt.Color;
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 
 import entities.Water;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.UnreadableException;
 import launcher.OurModel;
-import messages.Languages;
-import messages.Ontologies;
+import messages.Adherence;
+import messages.Leadership;
+import messages.Performatives;
+import messages.Sample;
 import sajas.core.Agent;
 import sajas.core.behaviours.CyclicBehaviour;
 import uchicago.src.sim.gui.Drawable;
@@ -70,11 +75,13 @@ public class SensingAgent extends Agent implements Drawable {
 	public void sampleEnvironment() {
 		lastSamplePollutionLevel = ((Water) model.getRiver().getObjectAt(x, y)).getPollution();
 
-		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+		ACLMessage msg = new ACLMessage(Performatives.INFORM);
 
-		msg.setLanguage(Languages.INFORM);
-		msg.setOntology(Ontologies.SAMPLE);
-		msg.setContent(Float.toString(lastSamplePollutionLevel));
+		try {
+			msg.setContentObject(new Sample(lastSamplePollutionLevel));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
 		for (SensingAgent sensor : neighbours) {
 			msg.addReceiver(sensor.getAID());
@@ -129,51 +136,45 @@ public class SensingAgent extends Agent implements Drawable {
 				ACLMessage msg = myAgent.receive();
 
 				if (msg != null) {
-					switch (msg.getLanguage()) {
-					case Languages.INFORM: {
-						switch (msg.getOntology()) {
-						case Ontologies.SAMPLE: {
-							float receivedSample = Float.parseFloat(msg.getContent());
+					switch (msg.getPerformative()) {
+					case Performatives.INFORM: {
+						try {
+							Serializable message = msg.getContentObject();
 
-							System.out.println("Received sample: " + receivedSample);
+							if (message instanceof Sample) {
+								double receivedSample = ((Sample) message).getValue();
 
-							break;
-						}
+								System.out.println("Received sample: " + receivedSample);
+							} else if (message instanceof Adherence) {
 
-						case Ontologies.ADHERENCE: {
-							float receivedAdherence = Float.parseFloat(msg.getContent());
-
-							System.out.println("Received adhernce: " + receivedAdherence);
-
-							break;
-						}
-
-						case Ontologies.LEADERSHIP: {
-							break;
-						}
-
-						default:
-							break;
+								System.out.println("Received adherence: ");
+							} else if (message instanceof Leadership) {
+								System.out.println("Received leadership: ");
+							} else {
+								System.out.println("ERROR");
+							}
+						} catch (UnreadableException e) {
+							e.printStackTrace();
 						}
 
 						break;
 					}
 
-					case Languages.FIRM_ADHERENCE: {
+					case Performatives.FIRM_ADHERENCE: {
 						break;
 					}
 
-					case Languages.ACK_ADHERENCE: {
+					case Performatives.ACK_ADHERENCE: {
 						sleep();
 
 						break;
 					}
 
-					case Languages.BREAK: {
+					case Performatives.BREAK: {
 						break;
 					}
 
-					case Languages.WITHDRAW: {
+					case Performatives.WITHDRAW: {
 						break;
 					}
 
