@@ -19,6 +19,7 @@ public class SensingAgent extends Agent implements Drawable {
 
 	private int x, y;
 	private State state;
+	private int sleepCountdown;
 	private float batteryLevel;
 	private Color color;
 	private float lastSamplePollutionLevel;
@@ -59,10 +60,7 @@ public class SensingAgent extends Agent implements Drawable {
 
 			@Override
 			public void action() {
-				if (batteryLevel > 0)
-					sampleEnvironment();
-
-				updateBatteryLevel();
+				update();
 			}
 		});
 
@@ -84,11 +82,42 @@ public class SensingAgent extends Agent implements Drawable {
 		}
 	}
 
-	private void updateBatteryLevel() {
-		batteryLevel -= 0.1;
+	private void update() {
+		switch (state) {
+		case ON:
+			if (batteryLevel > 0)
+				sampleEnvironment();
 
-		if (batteryLevel < 0)
-			batteryLevel = 0;
+			batteryLevel -= 0.1;
+
+			if (batteryLevel <= 0) {
+				batteryLevel = 0;
+				state = State.OFF;
+			}
+
+			break;
+
+		case SLEEP:
+			if (batteryLevel <= 0) {
+				batteryLevel = 0;
+				state = State.OFF;
+			}
+
+			sleepCountdown--;
+
+			if (sleepCountdown <= 0) {
+				sleepCountdown = 0;
+				state = State.ON;
+			}
+
+			break;
+
+		case OFF:
+			break;
+
+		default:
+			break;
+		}
 	}
 
 	private void initMessageListener() {
@@ -160,7 +189,7 @@ public class SensingAgent extends Agent implements Drawable {
 	private void sleep() {
 		state = State.SLEEP;
 
-		// TODO do something here
+		sleepCountdown = 100;
 	}
 
 	@Override
