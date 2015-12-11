@@ -17,8 +17,13 @@ import sajas.core.Agent;
 import sajas.core.behaviours.CyclicBehaviour;
 import uchicago.src.sim.gui.Drawable;
 import uchicago.src.sim.gui.SimGraphics;
+import uchicago.src.sim.util.Random;
+import utilities.Utilities;
 
 public class SensingAgent extends Agent implements Drawable {
+
+	private final static double minStdDeviation = 0.0005;
+	private final static double maxStdDeviation = 6;
 
 	private final OurModel model;
 
@@ -27,17 +32,20 @@ public class SensingAgent extends Agent implements Drawable {
 	private int sleepCountdown;
 	private float batteryLevel;
 	private Color color;
+	private double stdDeviation, maxAdherence;
 	private float lastSamplePollutionLevel;
 	private ArrayList<SensingAgent> neighbours;
 
 	public SensingAgent(int x, int y, OurModel model) {
 		this.x = x;
 		this.y = y;
-		state = State.ON;
+		this.state = State.ON;
 		this.batteryLevel = 100;
 		this.color = Color.GREEN;
+		this.stdDeviation = Random.uniform.nextDoubleFromTo(minStdDeviation, maxStdDeviation);
+		this.maxAdherence = 0;
 		this.lastSamplePollutionLevel = 0;
-		neighbours = new ArrayList<SensingAgent>();
+		this.neighbours = new ArrayList<SensingAgent>();
 
 		this.model = model;
 	}
@@ -143,6 +151,13 @@ public class SensingAgent extends Agent implements Drawable {
 
 							if (message instanceof Sample) {
 								double receivedSample = ((Sample) message).getValue();
+
+								// calculate adherence
+								// TODO this is not complete
+								double adherence = Utilities.normalDistribution(lastSamplePollutionLevel, stdDeviation);
+
+								if (maxAdherence < adherence)
+									maxAdherence = adherence;
 
 								System.out.println("Received sample: " + receivedSample);
 							} else if (message instanceof Adherence) {
