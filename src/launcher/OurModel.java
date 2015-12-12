@@ -233,6 +233,10 @@ public class OurModel extends Repast3Launcher {
 		mainContainer = Runtime.instance().createMainContainer(new ProfileImpl());
 
 		launchAgents();
+
+		buildSensorsNeighboursList();
+
+		pourRiverWater();
 	}
 
 	public void launchAgents() {
@@ -296,10 +300,6 @@ public class OurModel extends Repast3Launcher {
 		} catch (StaleProxyException e) {
 			e.printStackTrace();
 		}
-
-		buildSensorsNeighboursList();
-
-		pourRiverWater();
 	}
 
 	private void buildSensorsNeighboursList() {

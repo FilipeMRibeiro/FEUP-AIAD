@@ -80,23 +80,6 @@ public class SensingAgent extends Agent implements Drawable {
 		initMessageListener();
 	}
 
-	public void sampleEnvironment() {
-		lastSamplePollutionLevel = ((Water) model.getRiver().getObjectAt(x, y)).getPollution();
-
-		ACLMessage msg = new ACLMessage(Performatives.INFORM);
-
-		try {
-			msg.setContentObject(new Sample(lastSamplePollutionLevel));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		for (SensingAgent sensor : neighbours) {
-			msg.addReceiver(sensor.getAID());
-			send(msg);
-		}
-	}
-
 	private void update() {
 		switch (state) {
 		case ON:
@@ -135,6 +118,23 @@ public class SensingAgent extends Agent implements Drawable {
 		}
 	}
 
+	public void sampleEnvironment() {
+		lastSamplePollutionLevel = ((Water) model.getRiver().getObjectAt(x, y)).getPollution();
+
+		ACLMessage msg = new ACLMessage(Performatives.INFORM);
+
+		try {
+			msg.setContentObject(new Sample(lastSamplePollutionLevel));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		for (SensingAgent sensor : neighbours)
+			msg.addReceiver(sensor.getAID());
+
+		send(msg);
+	}
+
 	private void initMessageListener() {
 		addBehaviour(new CyclicBehaviour(this) {
 			private static final long serialVersionUID = 1L;
@@ -144,11 +144,11 @@ public class SensingAgent extends Agent implements Drawable {
 				ACLMessage msg = myAgent.receive();
 
 				if (msg != null) {
-					switch (msg.getPerformative()) {
-					case Performatives.INFORM: {
-						try {
-							Serializable message = msg.getContentObject();
+					try {
+						Serializable message = msg.getContentObject();
 
+						switch (msg.getPerformative()) {
+						case Performatives.INFORM: {
 							if (message instanceof Sample) {
 								double receivedSample = ((Sample) message).getValue();
 
@@ -168,35 +168,36 @@ public class SensingAgent extends Agent implements Drawable {
 							} else {
 								System.out.println("ERROR");
 							}
-						} catch (UnreadableException e) {
-							e.printStackTrace();
+
+							break;
 						}
 
-						break;
+						case Performatives.FIRM_ADHERENCE: {
+							break;
+						}
+
+						case Performatives.ACK_ADHERENCE: {
+							sleep();
+
+							break;
+						}
+
+						case Performatives.BREAK: {
+							break;
+						}
+
+						case Performatives.WITHDRAW: {
+							break;
+						}
+
+						default:
+							break;
+						}
+					} catch (UnreadableException e1) {
+						e1.printStackTrace();
 					}
 
-					case Performatives.FIRM_ADHERENCE: {
-						break;
-					}
-
-					case Performatives.ACK_ADHERENCE: {
-						sleep();
-
-						break;
-					}
-
-					case Performatives.BREAK: {
-						break;
-					}
-
-					case Performatives.WITHDRAW: {
-						break;
-					}
-
-					default:
-						break;
-					}
-
+					// TODO delete this debug msg
 					System.out.println(getLocalName() + " received message from agent " + msg.getSender().getName());
 				} else {
 					block();
@@ -208,6 +209,7 @@ public class SensingAgent extends Agent implements Drawable {
 	private void sleep() {
 		state = State.SLEEP;
 
+		// TODO change this and make it a parameter for the gui
 		sleepCountdown = 100;
 	}
 
