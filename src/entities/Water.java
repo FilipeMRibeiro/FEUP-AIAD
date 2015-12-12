@@ -26,6 +26,8 @@ public class Water implements Drawable {
 
 	public void setPollution(float pollution) {
 		this.pollution = pollution > MAX_POLLUTION ? MAX_POLLUTION : pollution;
+
+		this.color = new Color((int) this.pollution * 255 / MAX_POLLUTION, 0, 255);
 	}
 
 	@Override
