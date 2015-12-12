@@ -6,6 +6,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 
 import entities.Water;
+import jade.core.AID;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.UnreadableException;
 import launcher.OurModel;
@@ -33,8 +34,8 @@ public class SensingAgent extends Agent implements Drawable {
 	private float batteryLevel;
 	private Color color;
 	private double stdDeviation, maxAdherence;
-	private float lastSamplePollutionLevel;
-	private ArrayList<SensingAgent> neighbours;
+	private ArrayList<Float> pollutionSamples;
+	private ArrayList<AID> neighboursAID;
 
 	public SensingAgent(int x, int y, OurModel model) {
 		this.x = x;
@@ -42,10 +43,11 @@ public class SensingAgent extends Agent implements Drawable {
 		this.state = State.ON;
 		this.batteryLevel = 100;
 		this.color = Color.GREEN;
+		// TODO should this be random?
 		this.stdDeviation = Random.uniform.nextDoubleFromTo(minStdDeviation, maxStdDeviation);
 		this.maxAdherence = 0;
-		this.lastSamplePollutionLevel = 0;
-		this.neighbours = new ArrayList<SensingAgent>();
+		this.pollutionSamples = new ArrayList<Float>();
+		this.neighboursAID = new ArrayList<AID>();
 
 		this.model = model;
 	}
@@ -60,7 +62,7 @@ public class SensingAgent extends Agent implements Drawable {
 
 				// TODO change this and make it a parameter for the gui
 				if (distance <= 10)
-					neighbours.add(sensor);
+					neighboursAID.add(sensor.getAID());
 			}
 		}
 	}
@@ -119,20 +121,24 @@ public class SensingAgent extends Agent implements Drawable {
 	}
 
 	public void sampleEnvironment() {
-		lastSamplePollutionLevel = ((Water) model.getRiver().getObjectAt(x, y)).getPollution();
+		pollutionSamples.add(((Water) model.getRiver().getObjectAt(x, y)).getPollution());
 
 		ACLMessage msg = new ACLMessage(Performatives.INFORM);
 
 		try {
-			msg.setContentObject(new Sample(lastSamplePollutionLevel));
+			msg.setContentObject(new Sample(getLastPollutionSample()));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
-		for (SensingAgent sensor : neighbours)
-			msg.addReceiver(sensor.getAID());
+		for (AID aid : neighboursAID)
+			msg.addReceiver(aid);
 
 		send(msg);
+	}
+
+	public float getLastPollutionSample() {
+		return pollutionSamples.get(pollutionSamples.size() - 1);
 	}
 
 	private void initMessageListener() {
@@ -152,9 +158,7 @@ public class SensingAgent extends Agent implements Drawable {
 							if (message instanceof Sample) {
 								double receivedSample = ((Sample) message).getValue();
 
-								// calculate adherence
-								// TODO this is not complete
-								double adherence = Utilities.normalDistribution(lastSamplePollutionLevel, stdDeviation);
+								double adherence = calcAdherence(receivedSample);
 
 								if (maxAdherence < adherence)
 									maxAdherence = adherence;
@@ -206,6 +210,22 @@ public class SensingAgent extends Agent implements Drawable {
 		});
 	}
 
+	private double calcAdherence(double pollutionSample) {
+		double thisSensorPollutionSamplesMean = Utilities.mean(pollutionSamples);
+		double valsSimilarity = Utilities.probNormalDistribution(pollutionSample, thisSensorPollutionSamplesMean,
+				stdDeviation)
+				/ Utilities.probNormalDistribution(thisSensorPollutionSamplesMean, thisSensorPollutionSamplesMean,
+						stdDeviation);
+
+		double eHj = Math.pow(Math.E, Utilities.entropy(stdDeviation));
+		double eHmin = Math.pow(Math.E, Utilities.entropy(minStdDeviation));
+		double eHmax = Math.pow(Math.E, Utilities.entropy(maxStdDeviation));
+
+		double varModelCertainty = 1 - ((eHj - eHmin) / (eHmax - eHmin));
+
+		return valsSimilarity * varModelCertainty;
+	}
+
 	private void sleep() {
 		state = State.SLEEP;
 
@@ -252,10 +272,6 @@ public class SensingAgent extends Agent implements Drawable {
 
 	public float getBatteryLevel() {
 		return batteryLevel;
-	}
-
-	public float getLastSamplePollutionLevel() {
-		return lastSamplePollutionLevel;
 	}
 
 }

@@ -138,7 +138,7 @@ public class OurModel extends Repast3Launcher {
 
 				@Override
 				public double getSValue() {
-					return sensorsList.get(iPrime).getLastSamplePollutionLevel();
+					return sensorsList.get(iPrime).getLastPollutionSample();
 				}
 
 			});
