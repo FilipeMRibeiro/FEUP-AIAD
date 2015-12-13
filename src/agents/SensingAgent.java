@@ -53,7 +53,6 @@ public class SensingAgent extends Agent implements Drawable {
 		this.state = State.ON;
 		this.energyLevel = MAXIMUM_ENERGY_LEVEL;
 		this.color = color;
-		// TODO should this be random?
 		this.stdDeviation = Random.uniform.nextDoubleFromTo(MIN_STD_DEVIATION, MAX_STD_DEVIATION);
 		this.maxAdherence = 0;
 		this.maxLeadership = 0;
@@ -398,8 +397,7 @@ public class SensingAgent extends Agent implements Drawable {
 	private void sleep() {
 		state = State.SLEEP;
 
-		// TODO change this and make it a parameter for the gui
-		sleepCountdown = 100;
+		sleepCountdown = Random.uniform.nextIntFromTo(50, 500);
 	}
 
 	@Override
