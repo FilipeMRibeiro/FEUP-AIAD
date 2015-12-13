@@ -1,23 +1,11 @@
 package messages;
 
-import java.io.Serializable;
-
-public class Sample implements Serializable {
+public class Sample extends Inform {
 
 	private static final long serialVersionUID = 1L;
 
-	private double value;
-
 	public Sample(double value) {
-		this.value = value;
-	}
-
-	public double getValue() {
-		return value;
-	}
-
-	public void setValue(double value) {
-		this.value = value;
+		super(value);
 	}
 
 }

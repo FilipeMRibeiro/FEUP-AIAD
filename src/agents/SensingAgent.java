@@ -160,8 +160,19 @@ public class SensingAgent extends Agent implements Drawable {
 
 								double adherence = calcAdherence(receivedSample);
 
-								if (maxAdherence < adherence)
+								if (maxAdherence < adherence) {
 									maxAdherence = adherence;
+
+									try {
+										ACLMessage reply = msg.createReply();
+
+										reply.setContentObject(new Adherence(adherence));
+
+										send(reply);
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
 
 								System.out.println("Received sample: " + receivedSample);
 							} else if (message instanceof Adherence) {
