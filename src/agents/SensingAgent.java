@@ -39,7 +39,7 @@ public class SensingAgent extends Agent implements Drawable {
 	private int sleepCountdown;
 	private float energyLevel;
 	private Color color;
-	private double stdDeviation, maxAdherence;
+	private double stdDeviation, maxAdherence, ownLead;
 	private ArrayList<Double> pollutionSamples;
 
 	private boolean leader;
@@ -56,6 +56,7 @@ public class SensingAgent extends Agent implements Drawable {
 		// TODO should this be random?
 		this.stdDeviation = Random.uniform.nextDoubleFromTo(MIN_STD_DEVIATION, MAX_STD_DEVIATION);
 		this.maxAdherence = 0;
+		this.ownLead = 0;
 		this.pollutionSamples = new ArrayList<Double>();
 
 		this.leader = false;
@@ -176,49 +177,61 @@ public class SensingAgent extends Agent implements Drawable {
 
 								neighboursLastSampleMap.put(msg.getSender(), receivedSample);
 
-								// System.out.println("Received sample: " +
-								// receivedSample);
+								double adherence = adherence2NeighbourEvaluation(receivedSample);
 
-								double adherence = calcAdherence(receivedSample);
-
+								// updateOwnMaxAdherence();
 								if (maxAdherence < adherence) {
 									maxAdherence = adherence;
 
-									neighboursAdherenceMap.put(msg.getSender(), adherence);
+									neighboursAdherenceMap.put(msg.getSender(), maxAdherence);
 
 									try {
+										// inform(me, al, maxAdh, t);
 										ACLMessage reply = msg.createReply();
-
-										reply.setContentObject(new Adherence(adherence));
-
+										reply.setContentObject(new Adherence(maxAdherence));
 										send(reply);
 									} catch (IOException e) {
 										e.printStackTrace();
 									}
 								}
 							} else if (message instanceof Adherence) {
-								System.out.println("Received adherence.");
-								double receivedAdherence = message.getValue();
-
-								double leadership = calcLeadership(receivedAdherence);
-
+								double leadership = calcLead(message.getValue());
 								System.out.println("leadership: " + leadership);
 
 								try {
+									// inform(me, ar, lead);
 									ACLMessage reply = msg.createReply();
-
 									reply.setContentObject(new Leadership(leadership));
-
 									send(reply);
 								} catch (IOException e) {
 									e.printStackTrace();
 								}
-							} else if (message instanceof Leadership) {
-								System.out.println("Received leadership.");
 
-								ACLMessage reply = msg.createReply();
-								reply.setPerformative(Performatives.FIRM_ADHERENCE);
-								send(reply);
+								double adherence = adherence2NeighbourEvaluation(
+										neighboursLastSampleMap.get(msg.getSender()));
+
+								// updateOwnMaxAdherence();
+								if (maxAdherence < adherence) {
+									maxAdherence = adherence;
+
+									neighboursAdherenceMap.put(msg.getSender(), maxAdherence);
+
+									try {
+										// inform(me, al, maxAdh, t);
+										ACLMessage reply = msg.createReply();
+										reply.setContentObject(new Adherence(maxAdherence));
+										send(reply);
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
+							} else if (message instanceof Leadership) {
+								if (message.getValue() > ownLead) {
+									// firmAdherence(me, al);
+									ACLMessage reply = msg.createReply();
+									reply.setPerformative(Performatives.FIRM_ADHERENCE);
+									send(reply);
+								}
 							} else {
 								System.out.println("--- ERROR ---");
 							}
@@ -227,26 +240,34 @@ public class SensingAgent extends Agent implements Drawable {
 						}
 
 						case Performatives.FIRM_ADHERENCE: {
+							// ackAdherence(me, ar);
 							ACLMessage reply = msg.createReply();
 							reply.setPerformative(Performatives.ACK_ADHERENCE);
 							send(reply);
 
+							// updateOwnLeadValue();
 							leader = true;
+
+							// updateDependentGroup();
 							dependantNeighbours.add(msg.getSender());
 
 							break;
 						}
 
 						case Performatives.ACK_ADHERENCE: {
+							// if !leader && al != aL
 							if (!leader && msg.getSender() != nodeLeaderOfMe) {
+								// withdraw(me, aL);
 								ACLMessage withdrawMsg = msg.createReply();
-
 								withdrawMsg.setPerformative(Performatives.WITHDRAW);
-
 								send(withdrawMsg);
-							} else if (leader && !dependantNeighbours.isEmpty()) {
+							}
+
+							// if leader && D(me) != empty
+							if (leader && !dependantNeighbours.isEmpty()) {
 								ACLMessage breakMsg = new ACLMessage(Performatives.BREAK);
 
+								// break(me, ap);
 								for (AID aid : dependantNeighbours)
 									breakMsg.addReceiver(aid);
 
@@ -255,8 +276,9 @@ public class SensingAgent extends Agent implements Drawable {
 								dependantNeighbours.clear();
 							}
 
-							nodeLeaderOfMe = msg.getSender();
+							// updateRoleState(dependant);
 							leader = false;
+							nodeLeaderOfMe = msg.getSender();
 
 							sleep();
 
@@ -264,8 +286,9 @@ public class SensingAgent extends Agent implements Drawable {
 						}
 
 						case Performatives.BREAK: {
-							nodeLeaderOfMe = this.myAgent.getAID();
+							// updateRoleState(leader);
 							leader = true;
+							nodeLeaderOfMe = this.myAgent.getAID();
 
 							break;
 						}
@@ -273,8 +296,9 @@ public class SensingAgent extends Agent implements Drawable {
 						case Performatives.WITHDRAW: {
 							dependantNeighbours.remove(msg.getSender());
 
-							nodeLeaderOfMe = this.myAgent.getAID();
+							// updateRoleState(leader);
 							leader = true;
+							nodeLeaderOfMe = this.myAgent.getAID();
 
 							break;
 						}
@@ -293,7 +317,7 @@ public class SensingAgent extends Agent implements Drawable {
 		});
 	}
 
-	private double calcAdherence(double pollutionSample) {
+	private double adherence2NeighbourEvaluation(double pollutionSample) {
 		double thisSensorPollutionSamplesMean = Utilities.mean(pollutionSamples);
 		double valsSimilarity = Utilities.probNormalDistribution(pollutionSample, thisSensorPollutionSamplesMean,
 				stdDeviation)
@@ -309,13 +333,13 @@ public class SensingAgent extends Agent implements Drawable {
 		return valsSimilarity * varModelCertainty;
 	}
 
-	private double calcLeadership(double negotiatingNeighbourAdherence) {
+	private double calcLead(double negotiatingNeighbourMaxAdherence) {
 		double prestigeSum = 0;
 
 		for (AID dependantAID : dependantNeighbours)
 			prestigeSum += neighboursAdherenceMap.get(dependantAID);
-		prestigeSum += calcAdherence(getLastPollutionSample());
-		prestigeSum += negotiatingNeighbourAdherence;
+		prestigeSum += adherence2NeighbourEvaluation(getLastPollutionSample());
+		prestigeSum += negotiatingNeighbourMaxAdherence;
 
 		double prestige = prestigeSum / (dependantNeighbours.size() + 2);
 
@@ -347,7 +371,8 @@ public class SensingAgent extends Agent implements Drawable {
 			break;
 
 		case ON:
-			System.out.println("Leader of " + getAID() + ": " + nodeLeaderOfMe);
+			// System.out.println("Leader of " + getAID() + ": " +
+			// nodeLeaderOfMe);
 
 			if (nodeLeaderOfMe != getAID())
 				g.drawFastRect(model.getSensorCoalitionColor(nodeLeaderOfMe));
