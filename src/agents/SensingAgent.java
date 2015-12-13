@@ -45,14 +45,14 @@ public class SensingAgent extends Agent implements Drawable {
 	private boolean leader;
 	private HashMap<AID, Double> neighboursLastSampleMap, neighboursAdherenceMap;
 	private Set<AID> dependantNeighbours;
-	private AID leaderNodeOfMe;
+	private AID nodeLeaderOfMe;
 
-	public SensingAgent(int x, int y, OurModel model) {
+	public SensingAgent(int x, int y, Color color, OurModel model) {
 		this.x = x;
 		this.y = y;
 		this.state = State.ON;
 		this.energyLevel = MAXIMUM_ENERGY_LEVEL;
-		this.color = Color.GREEN;
+		this.color = color;
 		// TODO should this be random?
 		this.stdDeviation = Random.uniform.nextDoubleFromTo(MIN_STD_DEVIATION, MAX_STD_DEVIATION);
 		this.maxAdherence = 0;
@@ -62,7 +62,6 @@ public class SensingAgent extends Agent implements Drawable {
 		this.neighboursLastSampleMap = new HashMap<AID, Double>();
 		this.neighboursAdherenceMap = new HashMap<AID, Double>();
 		this.dependantNeighbours = new TreeSet<AID>();
-		this.leaderNodeOfMe = null;
 
 		this.model = model;
 	}
@@ -84,6 +83,8 @@ public class SensingAgent extends Agent implements Drawable {
 
 	protected void setup() {
 		System.out.println("Agent " + getLocalName() + " started.");
+
+		this.nodeLeaderOfMe = getAID();
 
 		addBehaviour(new CyclicBehaviour(this) {
 			private static final long serialVersionUID = 1L;
@@ -237,7 +238,7 @@ public class SensingAgent extends Agent implements Drawable {
 						}
 
 						case Performatives.ACK_ADHERENCE: {
-							if (!leader && msg.getSender() != leaderNodeOfMe) {
+							if (!leader && msg.getSender() != nodeLeaderOfMe) {
 								ACLMessage withdrawMsg = msg.createReply();
 
 								withdrawMsg.setPerformative(Performatives.WITHDRAW);
@@ -254,6 +255,7 @@ public class SensingAgent extends Agent implements Drawable {
 								dependantNeighbours.clear();
 							}
 
+							nodeLeaderOfMe = msg.getSender();
 							leader = false;
 
 							sleep();
@@ -262,6 +264,7 @@ public class SensingAgent extends Agent implements Drawable {
 						}
 
 						case Performatives.BREAK: {
+							nodeLeaderOfMe = this.myAgent.getAID();
 							leader = true;
 
 							break;
@@ -270,6 +273,7 @@ public class SensingAgent extends Agent implements Drawable {
 						case Performatives.WITHDRAW: {
 							dependantNeighbours.remove(msg.getSender());
 
+							nodeLeaderOfMe = this.myAgent.getAID();
 							leader = true;
 
 							break;
@@ -339,27 +343,26 @@ public class SensingAgent extends Agent implements Drawable {
 	public void draw(SimGraphics g) {
 		switch (state) {
 		case OFF:
-			color = Color.BLACK;
+			g.drawFastRect(Color.BLACK);
 			break;
 
 		case ON:
-			if (energyLevel < 20)
-				color = Color.RED;
-			else if (energyLevel < 60)
-				color = Color.YELLOW;
+			System.out.println("Leader of " + getAID() + ": " + nodeLeaderOfMe);
+
+			if (nodeLeaderOfMe != getAID())
+				g.drawFastRect(model.getSensorCoalitionColor(nodeLeaderOfMe));
 			else
-				color = Color.GREEN;
+				g.drawFastRect(color);
+
 			break;
 
 		case SLEEP:
-			color = Color.GRAY;
+			g.drawFastRect(Color.GRAY);
 			break;
 
 		default:
 			break;
 		}
-
-		g.drawFastRect(color);
 	}
 
 	@Override
@@ -372,8 +375,12 @@ public class SensingAgent extends Agent implements Drawable {
 		return y;
 	}
 
-	public float getBatteryLevel() {
+	public float getEnergyLevel() {
 		return energyLevel;
+	}
+
+	public Color getColor() {
+		return color;
 	}
 
 }

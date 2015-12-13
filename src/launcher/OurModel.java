@@ -1,5 +1,6 @@
 package launcher;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -7,6 +8,7 @@ import java.util.Vector;
 
 import agents.SensingAgent;
 import entities.Water;
+import jade.core.AID;
 import jade.core.ProfileImpl;
 import jade.wrapper.StaleProxyException;
 import sajas.core.Runtime;
@@ -161,7 +163,7 @@ public class OurModel extends Repast3Launcher {
 				List<Float> batteryLevels = new ArrayList<Float>();
 
 				for (SensingAgent sensor : sensorsList)
-					batteryLevels.add(sensor.getBatteryLevel());
+					batteryLevels.add(sensor.getEnergyLevel());
 
 				Collections.sort(batteryLevels);
 
@@ -240,6 +242,8 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	public void launchAgents() {
+		int sensorsColorInterval = 255 / numberOfSensors;
+
 		try {
 			switch (scenario) {
 			case ChainAlongRiver: {
@@ -249,7 +253,7 @@ public class OurModel extends Repast3Launcher {
 				for (int i = 0; i < numberOfSensors; i++) {
 					int x = (int) (i * spacing);
 
-					SensingAgent agent = new SensingAgent(x, y, this);
+					SensingAgent agent = new SensingAgent(x, y, new Color(i * sensorsColorInterval, 255, 0), this);
 
 					river.putObjectAt(x, y, agent);
 					sensorsList.add(agent);
@@ -266,7 +270,8 @@ public class OurModel extends Repast3Launcher {
 						int x = i * riverHeight / 4 + riverHeight / 4;
 						int y = (j + 1) * riverHeight / 4;
 
-						SensingAgent agent = new SensingAgent(x, y, this);
+						SensingAgent agent = new SensingAgent(x, y,
+								new Color((i * 3 + j) * sensorsColorInterval, 255, 0), this);
 
 						river.putObjectAt(x, y, agent);
 						sensorsList.add(agent);
@@ -283,7 +288,7 @@ public class OurModel extends Repast3Launcher {
 					int x = Random.uniform.nextIntFromTo(0, river.getSizeX() - 1);
 					int y = Random.uniform.nextIntFromTo(0, river.getSizeY() - 1);
 
-					SensingAgent agent = new SensingAgent(x, y, this);
+					SensingAgent agent = new SensingAgent(x, y, new Color(i * sensorsColorInterval, 255, 0), this);
 
 					river.putObjectAt(x, y, agent);
 					sensorsList.add(agent);
@@ -403,6 +408,15 @@ public class OurModel extends Repast3Launcher {
 
 	public ArrayList<SensingAgent> getSensorsList() {
 		return sensorsList;
+	}
+
+	public Color getSensorCoalitionColor(AID aid) {
+		for (SensingAgent sensor : sensorsList)
+			if (sensor.getAID().equals(aid))
+				return sensor.getColor();
+
+		// cyan is used to show that an error occurred
+		return Color.CYAN;
 	}
 
 }
