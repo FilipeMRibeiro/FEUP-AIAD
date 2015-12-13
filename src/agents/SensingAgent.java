@@ -39,7 +39,7 @@ public class SensingAgent extends Agent implements Drawable {
 	private int sleepCountdown;
 	private float energyLevel;
 	private Color color;
-	private double stdDeviation, maxAdherence, ownLead;
+	private double stdDeviation, maxAdherence, maxLeadership;
 	private ArrayList<Double> pollutionSamples;
 
 	private boolean leader;
@@ -56,13 +56,14 @@ public class SensingAgent extends Agent implements Drawable {
 		// TODO should this be random?
 		this.stdDeviation = Random.uniform.nextDoubleFromTo(MIN_STD_DEVIATION, MAX_STD_DEVIATION);
 		this.maxAdherence = 0;
-		this.ownLead = 0;
+		this.maxLeadership = 0;
 		this.pollutionSamples = new ArrayList<Double>();
 
 		this.leader = false;
 		this.neighboursLastSampleMap = new HashMap<AID, Double>();
 		this.neighboursAdherenceMap = new HashMap<AID, Double>();
 		this.dependantNeighbours = new TreeSet<AID>();
+		this.nodeLeaderOfMe = null;
 
 		this.model = model;
 	}
@@ -83,10 +84,6 @@ public class SensingAgent extends Agent implements Drawable {
 	}
 
 	protected void setup() {
-		System.out.println("Agent " + getLocalName() + " started.");
-
-		this.nodeLeaderOfMe = getAID();
-
 		addBehaviour(new CyclicBehaviour(this) {
 			private static final long serialVersionUID = 1L;
 
@@ -102,12 +99,10 @@ public class SensingAgent extends Agent implements Drawable {
 	private void update() {
 		switch (state) {
 		case ON:
-			if (energyLevel > 0)
+			if (energyLevel > 0) {
 				sampleEnvironment();
-
-			energyLevel -= 0.1;
-
-			if (energyLevel <= 0) {
+				energyLevel -= 0.1;
+			} else {
 				energyLevel = 0;
 				state = State.OFF;
 			}
@@ -118,13 +113,13 @@ public class SensingAgent extends Agent implements Drawable {
 			if (energyLevel <= 0) {
 				energyLevel = 0;
 				state = State.OFF;
-			}
+			} else {
+				sleepCountdown--;
 
-			sleepCountdown--;
-
-			if (sleepCountdown <= 0) {
-				sleepCountdown = 0;
-				state = State.ON;
+				if (sleepCountdown <= 0) {
+					sleepCountdown = 0;
+					state = State.ON;
+				}
 			}
 
 			break;
@@ -140,18 +135,18 @@ public class SensingAgent extends Agent implements Drawable {
 	public void sampleEnvironment() {
 		pollutionSamples.add(((Water) model.getRiver().getObjectAt(x, y)).getPollution());
 
-		ACLMessage msg = new ACLMessage(Performatives.INFORM);
-
 		try {
+			ACLMessage msg = new ACLMessage(Performatives.INFORM);
+
 			msg.setContentObject(new Sample(getLastPollutionSample()));
+
+			for (AID aid : neighboursAdherenceMap.keySet())
+				msg.addReceiver(aid);
+
+			send(msg);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		for (AID aid : neighboursAdherenceMap.keySet())
-			msg.addReceiver(aid);
-
-		send(msg);
 	}
 
 	public double getLastPollutionSample() {
@@ -166,7 +161,7 @@ public class SensingAgent extends Agent implements Drawable {
 			public void action() {
 				ACLMessage msg = myAgent.receive();
 
-				if (msg != null) {
+				if (state == State.ON && msg != null) {
 					try {
 						switch (msg.getPerformative()) {
 						case Performatives.INFORM: {
@@ -196,7 +191,6 @@ public class SensingAgent extends Agent implements Drawable {
 								}
 							} else if (message instanceof Adherence) {
 								double leadership = calcLead(message.getValue());
-								System.out.println("leadership: " + leadership);
 
 								try {
 									// inform(me, ar, lead);
@@ -226,11 +220,16 @@ public class SensingAgent extends Agent implements Drawable {
 									}
 								}
 							} else if (message instanceof Leadership) {
-								if (message.getValue() > ownLead) {
-									// firmAdherence(me, al);
-									ACLMessage reply = msg.createReply();
-									reply.setPerformative(Performatives.FIRM_ADHERENCE);
-									send(reply);
+								// if I have no leader
+								if (nodeLeaderOfMe == null) {
+									if (maxLeadership < message.getValue()) {
+										maxLeadership = message.getValue();
+
+										// firmAdherence(me, al);
+										ACLMessage reply = msg.createReply();
+										reply.setPerformative(Performatives.FIRM_ADHERENCE);
+										send(reply);
+									}
 								}
 							} else {
 								System.out.println("--- ERROR ---");
@@ -239,31 +238,48 @@ public class SensingAgent extends Agent implements Drawable {
 							break;
 						}
 
+							/**
+							 * Expresses the desire of the sending agent to
+							 * adhere to the addressee agent.
+							 */
 						case Performatives.FIRM_ADHERENCE: {
-							// ackAdherence(me, ar);
-							ACLMessage reply = msg.createReply();
-							reply.setPerformative(Performatives.ACK_ADHERENCE);
-							send(reply);
+							// If I can become a leader (or keep being one)
+							if (nodeLeaderOfMe == null) {
+								// ackAdherence(me, ar);
+								ACLMessage reply = msg.createReply();
+								reply.setPerformative(Performatives.ACK_ADHERENCE);
+								send(reply);
 
-							// updateOwnLeadValue();
-							leader = true;
+								// updateOwnLeadValue();
+								leader = true;
 
-							// updateDependentGroup();
-							dependantNeighbours.add(msg.getSender());
+								// updateDependentGroup();
+								dependantNeighbours.add(msg.getSender());
+							}
 
 							break;
 						}
 
+							/**
+							 * Acknowledgement to a previously received
+							 * firmAdherence message.
+							 */
 						case Performatives.ACK_ADHERENCE: {
-							// if !leader && al != aL
-							if (!leader && msg.getSender() != nodeLeaderOfMe) {
+							/*
+							 * If I am not a leader and I already have a leader
+							 * different than the one I want to adhere too.
+							 */
+							if (!leader && nodeLeaderOfMe != null && nodeLeaderOfMe != msg.getSender()) {
 								// withdraw(me, aL);
-								ACLMessage withdrawMsg = msg.createReply();
-								withdrawMsg.setPerformative(Performatives.WITHDRAW);
+								ACLMessage withdrawMsg = new ACLMessage(Performatives.WITHDRAW);
+								withdrawMsg.addReceiver(nodeLeaderOfMe);
 								send(withdrawMsg);
 							}
 
-							// if leader && D(me) != empty
+							/*
+							 * If I am a leader and there are nodes dependant on
+							 * me.
+							 */
 							if (leader && !dependantNeighbours.isEmpty()) {
 								ACLMessage breakMsg = new ACLMessage(Performatives.BREAK);
 
@@ -276,29 +292,51 @@ public class SensingAgent extends Agent implements Drawable {
 								dependantNeighbours.clear();
 							}
 
-							// updateRoleState(dependant);
+							/*
+							 * I become dependant, I now have a leader, and I
+							 * can go to sleep.
+							 */
 							leader = false;
 							nodeLeaderOfMe = msg.getSender();
-
 							sleep();
 
 							break;
 						}
 
+							/**
+							 * Allows a leader agent to break a leadership
+							 * relationship.
+							 */
 						case Performatives.BREAK: {
-							// updateRoleState(leader);
-							leader = true;
-							nodeLeaderOfMe = this.myAgent.getAID();
+							if (leader)
+								System.err.println("BREAK received and I am a leader!");
+
+							/*
+							 * If a leader breaks its relationship with me, I no
+							 * longer have a leader.
+							 */
+							nodeLeaderOfMe = null;
 
 							break;
 						}
 
+							/**
+							 * Message sent by a dependant agent to break a
+							 * leadership relationship.
+							 */
 						case Performatives.WITHDRAW: {
+							if (!leader || nodeLeaderOfMe != null)
+								System.err.println("WITHDRAW received and I am not a leader");
+
+							// remove node from my dependants list
 							dependantNeighbours.remove(msg.getSender());
 
-							// updateRoleState(leader);
-							leader = true;
-							nodeLeaderOfMe = this.myAgent.getAID();
+							/*
+							 * If I have no more dependant nodes, I am no longer
+							 * a leader.
+							 */
+							if (dependantNeighbours.isEmpty())
+								leader = false;
 
 							break;
 						}
@@ -315,6 +353,7 @@ public class SensingAgent extends Agent implements Drawable {
 				}
 			}
 		});
+
 	}
 
 	private double adherence2NeighbourEvaluation(double pollutionSample) {
@@ -371,18 +410,15 @@ public class SensingAgent extends Agent implements Drawable {
 			break;
 
 		case ON:
+		case SLEEP:
 			// System.out.println("Leader of " + getAID() + ": " +
 			// nodeLeaderOfMe);
 
-			if (nodeLeaderOfMe != getAID())
+			if (nodeLeaderOfMe != null && nodeLeaderOfMe != getAID())
 				g.drawFastRect(model.getSensorCoalitionColor(nodeLeaderOfMe));
 			else
 				g.drawFastRect(color);
 
-			break;
-
-		case SLEEP:
-			g.drawFastRect(Color.GRAY);
 			break;
 
 		default:

@@ -242,7 +242,7 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	public void launchAgents() {
-		int sensorsColorInterval = 255 / numberOfSensors;
+		java.util.Random rand = new java.util.Random();
 
 		try {
 			switch (scenario) {
@@ -253,7 +253,8 @@ public class OurModel extends Repast3Launcher {
 				for (int i = 0; i < numberOfSensors; i++) {
 					int x = (int) (i * spacing);
 
-					SensingAgent agent = new SensingAgent(x, y, new Color(i * sensorsColorInterval, 255, 0), this);
+					SensingAgent agent = new SensingAgent(x, y,
+							new Color(rand.nextFloat(), rand.nextFloat(), rand.nextFloat()), this);
 
 					river.putObjectAt(x, y, agent);
 					sensorsList.add(agent);
@@ -271,7 +272,7 @@ public class OurModel extends Repast3Launcher {
 						int y = (j + 1) * riverHeight / 4;
 
 						SensingAgent agent = new SensingAgent(x, y,
-								new Color((i * 3 + j) * sensorsColorInterval, 255, 0), this);
+								new Color(rand.nextFloat(), rand.nextFloat(), rand.nextFloat()), this);
 
 						river.putObjectAt(x, y, agent);
 						sensorsList.add(agent);
@@ -288,7 +289,8 @@ public class OurModel extends Repast3Launcher {
 					int x = Random.uniform.nextIntFromTo(0, river.getSizeX() - 1);
 					int y = Random.uniform.nextIntFromTo(0, river.getSizeY() - 1);
 
-					SensingAgent agent = new SensingAgent(x, y, new Color(i * sensorsColorInterval, 255, 0), this);
+					SensingAgent agent = new SensingAgent(x, y,
+							new Color(rand.nextFloat(), rand.nextFloat(), rand.nextFloat()), this);
 
 					river.putObjectAt(x, y, agent);
 					sensorsList.add(agent);
@@ -415,8 +417,8 @@ public class OurModel extends Repast3Launcher {
 			if (sensor.getAID().equals(aid))
 				return sensor.getColor();
 
-		// cyan is used to show that an error occurred
-		return Color.CYAN;
+		// red is used to show that an error occurred
+		return Color.RED;
 	}
 
 }
