@@ -188,7 +188,7 @@ public class OurModel extends Repast3Launcher {
 	}
 
 	public void updateRiver() {
-		float nextPollutionLevels[][] = new float[riverWidth][riverHeight];
+		double nextPollutionLevels[][] = new double[riverWidth][riverHeight];
 
 		for (int x = 0; x < riverWidth; x++)
 			for (int y = 0; y < riverHeight; y++)
@@ -202,13 +202,13 @@ public class OurModel extends Repast3Launcher {
 	/*
 	 * The river flows according to this expression.
 	 */
-	private float nextPollutionLevelAt(int x, int y) {
+	private double nextPollutionLevelAt(int x, int y) {
 		return (1 - sedimentationFactor) * pollutionAt(x, y) + sedimentationFactor * (alpha * pollutionAt(x + 1, y - 1)
 				+ beta * pollutionAt(x + 1, y) + gamma * pollutionAt(x + 1, y + 1));
 	}
 
-	public float pollutionAt(int x, int y) {
-		float pollution = 0;
+	public double pollutionAt(int x, int y) {
+		double pollution = 0;
 
 		if (0 <= x && x < river.getSizeX() && 0 <= y && y < river.getSizeY()) {
 			// if the position is inside the river boundaries

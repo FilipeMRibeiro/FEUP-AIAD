@@ -40,10 +40,10 @@ public class SensingAgent extends Agent implements Drawable {
 	private float energyLevel;
 	private Color color;
 	private double stdDeviation, maxAdherence;
-	private ArrayList<Float> pollutionSamples;
+	private ArrayList<Double> pollutionSamples;
 
 	private boolean leader;
-	private HashMap<AID, Double> neighboursAdherence;
+	private HashMap<AID, Double> neighboursAdherenceMap;
 	private Set<AID> dependantNeighbours;
 	private AID leaderNodeOfMe;
 
@@ -56,10 +56,10 @@ public class SensingAgent extends Agent implements Drawable {
 		// TODO should this be random?
 		this.stdDeviation = Random.uniform.nextDoubleFromTo(MIN_STD_DEVIATION, MAX_STD_DEVIATION);
 		this.maxAdherence = 0;
-		this.pollutionSamples = new ArrayList<Float>();
+		this.pollutionSamples = new ArrayList<Double>();
 
 		this.leader = false;
-		this.neighboursAdherence = new HashMap<AID, Double>();
+		this.neighboursAdherenceMap = new HashMap<AID, Double>();
 		this.dependantNeighbours = new TreeSet<AID>();
 		this.leaderNodeOfMe = null;
 
@@ -76,7 +76,7 @@ public class SensingAgent extends Agent implements Drawable {
 
 				// TODO change this and make it a parameter for the gui
 				if (distance <= 10)
-					neighboursAdherence.put(sensor.getAID(), 0.0);
+					neighboursAdherenceMap.put(sensor.getAID(), 0.0);
 			}
 		}
 	}
@@ -145,13 +145,13 @@ public class SensingAgent extends Agent implements Drawable {
 			e.printStackTrace();
 		}
 
-		for (AID aid : neighboursAdherence.keySet())
+		for (AID aid : neighboursAdherenceMap.keySet())
 			msg.addReceiver(aid);
 
 		send(msg);
 	}
 
-	public float getLastPollutionSample() {
+	public double getLastPollutionSample() {
 		return pollutionSamples.get(pollutionSamples.size() - 1);
 	}
 
@@ -180,7 +180,7 @@ public class SensingAgent extends Agent implements Drawable {
 								if (maxAdherence < adherence) {
 									maxAdherence = adherence;
 
-									neighboursAdherence.put(msg.getSender(), adherence);
+									neighboursAdherenceMap.put(msg.getSender(), adherence);
 
 									try {
 										ACLMessage reply = msg.createReply();
@@ -306,7 +306,7 @@ public class SensingAgent extends Agent implements Drawable {
 		double prestigeSum = 0;
 
 		for (AID dependantAID : dependantNeighbours)
-			prestigeSum += neighboursAdherence.get(dependantAID);
+			prestigeSum += neighboursAdherenceMap.get(dependantAID);
 		prestigeSum += calcAdherence(getLastPollutionSample());
 		prestigeSum += negotiatingNeighbourAdherence;
 
@@ -314,7 +314,8 @@ public class SensingAgent extends Agent implements Drawable {
 
 		double capacity = (energyLevel - SECURITY_ENERGY_LEVEL) / MAXIMUM_ENERGY_LEVEL;
 
-		double representativeness = 1 / (Math.pow(Math.E, 1));
+		double representativeness = 1
+				/ (Math.pow(Math.E, Utilities.cv(new ArrayList<Double>(neighboursAdherenceMap.values()))));
 
 		return prestige * capacity * representativeness;
 	}

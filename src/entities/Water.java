@@ -10,7 +10,7 @@ public class Water implements Drawable {
 	public static final int MAX_POLLUTION = 1000;
 
 	private int x, y;
-	private float pollution;
+	private double pollution;
 	private Color color;
 
 	public Water(int x, int y) {
@@ -20,11 +20,11 @@ public class Water implements Drawable {
 		setPollution(0);
 	}
 
-	public float getPollution() {
+	public double getPollution() {
 		return pollution;
 	}
 
-	public void setPollution(float pollution) {
+	public void setPollution(double pollution) {
 		this.pollution = pollution > MAX_POLLUTION ? MAX_POLLUTION : pollution;
 
 		this.color = new Color((int) this.pollution * 255 / MAX_POLLUTION, 0, 255);
