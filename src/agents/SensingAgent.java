@@ -2,7 +2,6 @@ package agents;
 
 import java.awt.Color;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 
 import entities.Water;
@@ -11,6 +10,7 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.UnreadableException;
 import launcher.OurModel;
 import messages.Adherence;
+import messages.Inform;
 import messages.Leadership;
 import messages.Performatives;
 import messages.Sample;
@@ -35,7 +35,10 @@ public class SensingAgent extends Agent implements Drawable {
 	private Color color;
 	private double stdDeviation, maxAdherence;
 	private ArrayList<Float> pollutionSamples;
-	private ArrayList<AID> neighboursAID;
+
+	private boolean leader;
+	private ArrayList<AID> neighbours, dependantNeighbours;
+	private AID leaderNodeOfMe;
 
 	public SensingAgent(int x, int y, OurModel model) {
 		this.x = x;
@@ -47,7 +50,11 @@ public class SensingAgent extends Agent implements Drawable {
 		this.stdDeviation = Random.uniform.nextDoubleFromTo(minStdDeviation, maxStdDeviation);
 		this.maxAdherence = 0;
 		this.pollutionSamples = new ArrayList<Float>();
-		this.neighboursAID = new ArrayList<AID>();
+
+		this.leader = false;
+		this.neighbours = new ArrayList<AID>();
+		this.dependantNeighbours = new ArrayList<AID>();
+		this.leaderNodeOfMe = null;
 
 		this.model = model;
 	}
@@ -62,7 +69,7 @@ public class SensingAgent extends Agent implements Drawable {
 
 				// TODO change this and make it a parameter for the gui
 				if (distance <= 10)
-					neighboursAID.add(sensor.getAID());
+					neighbours.add(sensor.getAID());
 			}
 		}
 	}
@@ -131,7 +138,7 @@ public class SensingAgent extends Agent implements Drawable {
 			e.printStackTrace();
 		}
 
-		for (AID aid : neighboursAID)
+		for (AID aid : neighbours)
 			msg.addReceiver(aid);
 
 		send(msg);
@@ -151,12 +158,12 @@ public class SensingAgent extends Agent implements Drawable {
 
 				if (msg != null) {
 					try {
-						Serializable message = msg.getContentObject();
-
 						switch (msg.getPerformative()) {
 						case Performatives.INFORM: {
+							Inform message = (Inform) msg.getContentObject();
+
 							if (message instanceof Sample) {
-								double receivedSample = ((Sample) message).getValue();
+								double receivedSample = message.getValue();
 
 								double adherence = calcAdherence(receivedSample);
 
@@ -176,44 +183,89 @@ public class SensingAgent extends Agent implements Drawable {
 
 								System.out.println("Received sample: " + receivedSample);
 							} else if (message instanceof Adherence) {
+								System.out.println("Received adherence.");
 
-								System.out.println("Received adherence: ");
+								double leadership = 1;
+
+								try {
+									ACLMessage reply = msg.createReply();
+
+									reply.setContentObject(new Leadership(leadership));
+
+									send(reply);
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
 							} else if (message instanceof Leadership) {
-								System.out.println("Received leadership: ");
+								System.out.println("Received leadership.");
+
+								ACLMessage reply = msg.createReply();
+								reply.setPerformative(Performatives.FIRM_ADHERENCE);
+								send(reply);
 							} else {
-								System.out.println("ERROR");
+								System.out.println("--- ERROR ---");
 							}
 
 							break;
 						}
 
 						case Performatives.FIRM_ADHERENCE: {
+							ACLMessage reply = msg.createReply();
+							reply.setPerformative(Performatives.ACK_ADHERENCE);
+							send(reply);
+
+							leader = true;
+							dependantNeighbours.add(msg.getSender());
+
 							break;
 						}
 
 						case Performatives.ACK_ADHERENCE: {
+							if (!leader && msg.getSender() != leaderNodeOfMe) {
+								ACLMessage withdrawMsg = msg.createReply();
+
+								withdrawMsg.setPerformative(Performatives.WITHDRAW);
+
+								send(withdrawMsg);
+							} else if (leader && !dependantNeighbours.isEmpty()) {
+								ACLMessage breakMsg = new ACLMessage(Performatives.BREAK);
+
+								for (AID aid : dependantNeighbours)
+									breakMsg.addReceiver(aid);
+
+								send(breakMsg);
+
+								dependantNeighbours.clear();
+							}
+
+							leader = false;
+
 							sleep();
 
 							break;
 						}
 
 						case Performatives.BREAK: {
+							leader = true;
+
 							break;
 						}
 
 						case Performatives.WITHDRAW: {
+							dependantNeighbours.remove(msg.getSender());
+
+							leader = true;
+
 							break;
 						}
 
 						default:
+							System.out.println("--- ERROR 2 ---");
 							break;
 						}
 					} catch (UnreadableException e1) {
 						e1.printStackTrace();
 					}
-
-					// TODO delete this debug msg
-					System.out.println(getLocalName() + " received message from agent " + msg.getSender().getName());
 				} else {
 					block();
 				}
