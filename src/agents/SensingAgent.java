@@ -43,7 +43,7 @@ public class SensingAgent extends Agent implements Drawable {
 	private ArrayList<Double> pollutionSamples;
 
 	private boolean leader;
-	private HashMap<AID, Double> neighboursAdherenceMap;
+	private HashMap<AID, Double> neighboursLastSampleMap, neighboursAdherenceMap;
 	private Set<AID> dependantNeighbours;
 	private AID leaderNodeOfMe;
 
@@ -59,6 +59,7 @@ public class SensingAgent extends Agent implements Drawable {
 		this.pollutionSamples = new ArrayList<Double>();
 
 		this.leader = false;
+		this.neighboursLastSampleMap = new HashMap<AID, Double>();
 		this.neighboursAdherenceMap = new HashMap<AID, Double>();
 		this.dependantNeighbours = new TreeSet<AID>();
 		this.leaderNodeOfMe = null;
@@ -171,6 +172,8 @@ public class SensingAgent extends Agent implements Drawable {
 
 							if (message instanceof Sample) {
 								double receivedSample = message.getValue();
+
+								neighboursLastSampleMap.put(msg.getSender(), receivedSample);
 
 								// System.out.println("Received sample: " +
 								// receivedSample);
@@ -314,8 +317,13 @@ public class SensingAgent extends Agent implements Drawable {
 
 		double capacity = (energyLevel - SECURITY_ENERGY_LEVEL) / MAXIMUM_ENERGY_LEVEL;
 
-		double representativeness = 1
-				/ (Math.pow(Math.E, Utilities.cv(new ArrayList<Double>(neighboursAdherenceMap.values()))));
+		ArrayList<Double> groupSamples = new ArrayList<Double>(neighboursLastSampleMap.values());
+		groupSamples.add(getLastPollutionSample());
+
+		double groupSamplesMean = Utilities.mean(groupSamples);
+
+		double representativeness = 1 / (Math.pow(Math.E, Math.abs(getLastPollutionSample() - groupSamplesMean)
+				* Utilities.cv(new ArrayList<Double>(neighboursAdherenceMap.values()))));
 
 		return prestige * capacity * representativeness;
 	}
