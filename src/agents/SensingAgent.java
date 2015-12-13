@@ -3,6 +3,8 @@ package agents;
 import java.awt.Color;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.TreeSet;
 
 import entities.Water;
 import jade.core.AID;
@@ -37,7 +39,7 @@ public class SensingAgent extends Agent implements Drawable {
 	private ArrayList<Float> pollutionSamples;
 
 	private boolean leader;
-	private ArrayList<AID> neighbours, dependantNeighbours;
+	private Set<AID> neighbours, dependantNeighbours;
 	private AID leaderNodeOfMe;
 
 	public SensingAgent(int x, int y, OurModel model) {
@@ -52,8 +54,8 @@ public class SensingAgent extends Agent implements Drawable {
 		this.pollutionSamples = new ArrayList<Float>();
 
 		this.leader = false;
-		this.neighbours = new ArrayList<AID>();
-		this.dependantNeighbours = new ArrayList<AID>();
+		this.neighbours = new TreeSet<AID>();
+		this.dependantNeighbours = new TreeSet<AID>();
 		this.leaderNodeOfMe = null;
 
 		this.model = model;
